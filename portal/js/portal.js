@@ -48,7 +48,6 @@ async function authPost(action, payload = {}) {
 // ---------- MODAL ----------
 function openModal(html) { $("#modal-box").innerHTML = html; $("#modal-overlay").classList.add("open"); }
 function closeModal() { $("#modal-overlay").classList.remove("open"); }
-$("#modal-overlay").addEventListener("click", e => { if (e.target.id === "modal-overlay") closeModal(); });
 
 // ---------- LOGIN / LOGOUT ----------
 function saveSession(token, user) {

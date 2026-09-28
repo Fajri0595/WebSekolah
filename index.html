@@ -6,6 +6,9 @@
 <title>SMA Negeri Nusantara — Portal Resmi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" href="img/favicon-180.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -19,7 +22,7 @@
 
 <nav class="navbar">
   <div class="container">
-    <a class="brand" data-page="beranda">🎓 SMA Negeri Nusantara</a>
+    <a class="brand" data-page="beranda"><img src="img/logo-mark.png" alt="Lambang SMA Negeri Nusantara"><span>SMA Negeri Nusantara</span></a>
     <ul class="nav-links">
       <li><a data-page="beranda">Beranda</a></li>
       <li><a data-page="profil">Profil Sekolah</a></li>
@@ -30,9 +33,11 @@
       <li><a data-page="galeri">Galeri</a></li>
       <li><a data-page="dokumen">Dokumen</a></li>
       <li><a data-page="layanan">Layanan</a></li>
-      <li><a href="portal/index.html">Login</a></li>
-      <li><a class="btn-ppdb-nav" data-page="ppdb">PPDB 2026/2027</a></li>
     </ul>
+    <div class="nav-actions">
+      <a class="btn-login-nav" href="portal/index.html">Login</a>
+      <a class="btn-ppdb-nav" data-page="ppdb">PPDB 2026/2027</a>
+    </div>
     <button id="hamburger" class="hamburger">☰</button>
   </div>
 </nav>

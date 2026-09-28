@@ -229,3 +229,35 @@ td { padding: 12px 16px; border-bottom: 1px solid #F1F5F9; font-size: 14px; }
   .portal-nav-item { width: auto; }
   .stat-grid, .split { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   PERBAIKAN: Brand/logo, navbar (Login + PPDB berdampingan), sidebar portal
+   ============================================================ */
+.navbar .container { max-width: 1320px; }
+.brand { white-space: nowrap; flex-shrink: 0; line-height: 1; }
+.brand img { height: 38px; width: 38px; object-fit: contain; }
+.nav-links { gap: 16px; flex-wrap: nowrap; }
+.nav-links a { white-space: nowrap; }
+.nav-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.nav-actions a { display: inline-block; white-space: nowrap; font-weight: 600; font-size: 14px; padding: 8px 16px; border-radius: var(--radius-btn); cursor: pointer; }
+.btn-login-nav { color: var(--navy); border: 1px solid var(--navy); background: var(--white); }
+.btn-login-nav:hover { background: var(--surface); }
+
+.portal-sidebar .brand-side { display: flex; align-items: center; gap: 10px; padding: 0 8px 16px; }
+.brand-side img { width: 36px; height: 36px; object-fit: contain; flex-shrink: 0; }
+.brand-side-title { display: block; font-size: 14px; line-height: 1.25; }
+.brand-side-sub { display: block; margin-top: 3px; font-family: var(--font-sans); font-size: 11px; font-weight: 400; letter-spacing: 0.04em; color: #94A3B8; }
+
+/* Menu diciutkan menjadi hamburger lebih awal agar tidak turun baris di layar menengah */
+@media (max-width: 1180px) {
+  .nav-links { display: none; flex-direction: column; width: 100%; background: var(--white); position: absolute; top: 100%; left: 0; padding: 12px 24px; border-bottom: 1px solid var(--border); }
+  .nav-links.open { display: flex; }
+  .hamburger { display: block; }
+  .nav-actions { margin-left: auto; }
+}
+@media (max-width: 700px) {
+  .navbar .container { flex-wrap: wrap; }
+  .hamburger { order: 2; margin-left: auto; }
+  .nav-actions { order: 3; width: 100%; margin-left: 0; }
+  .nav-actions a { flex: 1; text-align: center; }
+}
