@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMA Negeri Nusantara — Portal Resmi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="container">
+    <span>📞 (021) 7890-1234 &nbsp;|&nbsp; ✉ info@sman-nusantara.sch.id</span>
+    <span>Senin - Jumat: 07.00 - 16.00 WIB</span>
+  </div>
+</div>
+
+<nav class="navbar">
+  <div class="container">
+    <a class="brand" data-page="beranda">🎓 SMA Negeri Nusantara</a>
+    <ul class="nav-links">
+      <li><a data-page="beranda">Beranda</a></li>
+      <li><a data-page="profil">Profil Sekolah</a></li>
+      <li><a data-page="guru">Guru & Tendik</a></li>
+      <li><a data-page="kesiswaan">Kesiswaan</a></li>
+      <li><a data-page="prestasi">Prestasi</a></li>
+      <li><a data-page="berita">Berita</a></li>
+      <li><a data-page="galeri">Galeri</a></li>
+      <li><a data-page="dokumen">Dokumen</a></li>
+      <li><a data-page="layanan">Layanan</a></li>
+      <li><a href="portal/index.html">Login</a></li>
+      <li><a class="btn-ppdb-nav" data-page="ppdb">PPDB 2026/2027</a></li>
+    </ul>
+    <button id="hamburger" class="hamburger">☰</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ================= BERANDA ================= -->
+  <section id="page-beranda" class="page active">
+    <div class="hero">
+      <div class="container hero-grid">
+        <div>
+          <p class="eyebrow">Portal Resmi Institusi Pendidikan</p>
+          <h1>Membentuk Generasi Berkarakter Luhur, Cendekia, dan Berdaya Saing Global</h1>
+          <p>SMA Negeri Nusantara berkomitmen memberikan pendidikan menengah atas unggulan berbasis riset, integritas budi pekerti, dan kepemimpinan berwawasan kebangsaan.</p>
+          <div class="hero-actions">
+            <a class="btn btn-accent" data-page="ppdb">Daftar PPDB 2026/2027</a>
+            <a class="btn btn-outline" data-page="profil">Jelajahi Profil Sekolah</a>
+          </div>
+        </div>
+        <div class="hero-photo"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="container">
+        <div class="section-header text-center">
+          <hr class="gold-rule" style="margin:0 auto 16px">
+          <h2>Warta & Prestasi Terbaru</h2>
+        </div>
+        <h3 style="margin-bottom:16px">Kabar Sekolah</h3>
+        <div class="grid grid-3" id="beranda-berita"></div>
+        <h3 style="margin:32px 0 16px">Sorotan Prestasi</h3>
+        <div class="grid grid-4" id="beranda-prestasi"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PROFIL SEKOLAH ================= -->
+  <section id="page-profil" class="page">
+    <div class="container section">
+      <h1>Profil Sekolah</h1>
+      <div class="tabs-layout">
+        <div class="tab-sidebar" id="profil-tabs">
+          <button class="active" data-tab="sejarah">Sejarah</button>
+          <button data-tab="visimisi">Visi & Misi</button>
+          <button data-tab="sambutan">Sambutan Kepala Sekolah</button>
+          <button data-tab="struktur">Struktur Organisasi</button>
+          <button data-tab="fasilitas">Fasilitas</button>
+        </div>
+        <div id="profil-content"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= GURU & TENAGA KEPENDIDIKAN ================= -->
+  <section id="page-guru" class="page">
+    <div class="container section">
+      <h1>Guru & Tenaga Kependidikan</h1>
+      <p class="muted">Direktori pendidik dan tenaga kependidikan SMA Negeri Nusantara.</p>
+      <div class="grid grid-4" id="guru-grid" style="margin-top:24px"></div>
+    </div>
+  </section>
+
+  <!-- ================= KESISWAAN ================= -->
+  <section id="page-kesiswaan" class="page">
+    <div class="container section">
+      <h1>Kesiswaan</h1>
+      <div class="tabs-layout">
+        <div class="tab-sidebar" id="kesiswaan-tabs">
+          <button class="active" data-tab="kegiatan">Kegiatan Siswa</button>
+          <button data-tab="alumni">Direktori Alumni</button>
+        </div>
+        <div id="kesiswaan-content"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PRESTASI ================= -->
+  <section id="page-prestasi" class="page">
+    <div class="container section">
+      <h1>Prestasi Peserta Didik</h1>
+      <div class="grid grid-3" id="prestasi-grid" style="margin-top:24px"></div>
+    </div>
+  </section>
+
+  <!-- ================= BERITA & INFORMASI ================= -->
+  <section id="page-berita" class="page">
+    <div class="container section">
+      <h1>Berita & Informasi</h1>
+      <div class="tabs-layout">
+        <div class="tab-sidebar" id="berita-tabs">
+          <button class="active" data-tab="berita">Berita Sekolah</button>
+          <button data-tab="pengumuman">Pengumuman</button>
+          <button data-tab="agenda">Agenda</button>
+          <button data-tab="artikel">Artikel</button>
+        </div>
+        <div id="berita-content"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= GALERI ================= -->
+  <section id="page-galeri" class="page">
+    <div class="container section">
+      <h1>Galeri Sekolah</h1>
+      <div id="galeri-toggle" style="margin-bottom:20px">
+        <button class="btn btn-outline active" data-tipe="foto" onclick="renderGaleri('foto')">Foto</button>
+        <button class="btn btn-outline" data-tipe="video" onclick="renderGaleri('video')">Video</button>
+      </div>
+      <div id="galeri-grid"></div>
+    </div>
+  </section>
+
+  <!-- ================= PPDB : INFORMASI ================= -->
+  <section id="page-ppdb" class="page">
+    <div style="background:linear-gradient(135deg,var(--navy),var(--navy-dark));padding:48px 0">
+      <div class="container" id="ppdb-banner"><div class="loading" style="color:#fff">Memuat status PPDB...</div></div>
+    </div>
+    <div class="container section">
+      <div class="tabs-layout">
+        <div class="tab-sidebar" id="ppdb-tabs">
+          <button class="active" data-tab="info">Informasi Umum</button>
+          <button data-tab="persyaratan">Persyaratan</button>
+          <button data-tab="jadwal">Jadwal</button>
+          <button data-tab="alur">Alur Pendaftaran</button>
+        </div>
+        <div id="ppdb-content"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PPDB : FORM PENDAFTARAN ================= -->
+  <section id="page-ppdb-daftar" class="page">
+    <div class="container section" id="ppdb-form-page">
+      <h1>Formulir Pendaftaran Online</h1>
+      <div class="stepper" id="ppdb-stepper">
+        <div class="step active"><div class="step-circle">1</div><span class="label">Data Siswa</span></div>
+        <div class="step"><div class="step-circle">2</div><span class="label">Data Orang Tua</span></div>
+        <div class="step"><div class="step-circle">3</div><span class="label">Upload Dokumen</span></div>
+      </div>
+
+      <!-- STEP 1 -->
+      <div class="form-step active card" id="ppdb-step-1">
+        <h3>Data Calon Siswa</h3>
+        <div class="field"><label class="required">Nama Lengkap</label><input required name="namaSiswa"></div>
+        <div class="form-row">
+          <div class="field"><label class="required">Tempat Lahir</label><input required name="tempatLahir" placeholder="Jakarta"></div>
+          <div class="field"><label class="required">Tanggal Lahir</label><input required name="tanggalLahir" type="date"></div>
+          </div>
+        <div class="field"><label class="required">Nomor HP / WhatsApp</label><input required name="noHp" type="tel"></div>
+        <div class="field"><label class="required">Alamat Lengkap</label><textarea required name="alamat"></textarea></div>
+        <button class="btn btn-primary" onclick="ppdbNext(1)">Lanjut →</button>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="form-step card" id="ppdb-step-2">
+        <h3>Data Orang Tua / Wali</h3>
+        <div class="form-row">
+          <div class="field"><label class="required">Nama Ayah</label><input required name="namaAyah"></div>
+          <div class="field"><label class="required">Nama Ibu</label><input required name="namaIbu"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label class="required">Pekerjaan Orang Tua</label><input required name="pekerjaanOrtu"></div>
+          <div class="field"><label class="required">No. HP Orang Tua</label><input required name="noHpOrtu" type="tel"></div>
+        </div>
+        <button class="btn btn-outline" onclick="ppdbGoStep(1)">← Kembali</button>
+        <button class="btn btn-primary" onclick="ppdbNext(2)">Lanjut →</button>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="form-step card" id="ppdb-step-3">
+        <h3>Upload Dokumen Persyaratan</h3>
+        <p class="muted">Format PDF/JPG, maksimal 2MB per berkas.</p>
+        <div class="grid grid-2">
+          <div class="field">
+            <label class="required">Formulir / Bukti Pendaftaran</label>
+            <div class="upload-box" id="f-dokumen-umum-box" onclick="document.getElementById('f-dokumen-umum').click()">
+              <span class="upload-label">Klik untuk pilih berkas</span>
+            </div>
+            <input type="file" id="f-dokumen-umum" accept=".pdf,.jpg,.jpeg,.png" style="display:none">
+          </div>
+          <div class="field">
+            <label class="required">KTP Orang Tua / Wali</label>
+            <div class="upload-box" id="f-ktp-ortu-box" onclick="document.getElementById('f-ktp-ortu').click()">
+              <span class="upload-label">Klik untuk pilih berkas</span>
+            </div>
+            <input type="file" id="f-ktp-ortu" accept=".pdf,.jpg,.jpeg,.png" style="display:none">
+          </div>
+          <div class="field">
+            <label class="required">Kartu Keluarga (KK)</label>
+            <div class="upload-box" id="f-kk-box" onclick="document.getElementById('f-kk').click()">
+              <span class="upload-label">Klik untuk pilih berkas</span>
+            </div>
+            <input type="file" id="f-kk" accept=".pdf,.jpg,.jpeg,.png" style="display:none">
+          </div>
+          <div class="field">
+            <label>Dokumen Pendukung Lain (opsional)</label>
+            <div class="upload-box" id="f-dokumen-lain-box" onclick="document.getElementById('f-dokumen-lain').click()">
+              <span class="upload-label">Klik untuk pilih berkas</span>
+            </div>
+            <input type="file" id="f-dokumen-lain" accept=".pdf,.jpg,.jpeg,.png" style="display:none">
+          </div>
+        </div>
+        <div id="ppdb-submit-msg" style="margin-top:16px"></div>
+        <div style="margin-top:16px">
+          <button class="btn btn-outline" onclick="ppdbGoStep(2)">← Kembali</button>
+          <button class="btn btn-primary" id="ppdb-submit-btn" onclick="ppdbSubmit(event)">Kirim Pendaftaran</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PPDB : CEK STATUS ================= -->
+  <section id="page-ppdb-status" class="page">
+    <div class="container section" style="max-width:560px">
+      <h1 class="text-center">Cek Status Pendaftaran</h1>
+      <form class="card" onsubmit="ppdbCekStatus(event)">
+        <div class="field"><label class="required">Nomor Registrasi</label><input required id="cek-no-reg" placeholder="REG-2026-00001"></div>
+        <div class="field"><label class="required">Tanggal Lahir Siswa</label><input required id="cek-tgl-lahir" type="date"></div>
+        <button class="btn btn-primary" type="submit" style="width:100%">Periksa Status</button>
+      </form>
+      <div id="cek-status-result" style="margin-top:20px"></div>
+    </div>
+  </section>
+
+  <!-- ================= DOKUMEN ================= -->
+  <section id="page-dokumen" class="page">
+    <div class="container section">
+      <h1>Pusat Unduh Dokumen</h1>
+      <div class="tabs-layout">
+        <div class="tab-sidebar" id="dokumen-tabs">
+          <button class="active" data-tab="formulir">Download Formulir</button>
+          <button data-tab="kalender">Kalender Akademik</button>
+          <button data-tab="panduan">Panduan</button>
+          <button data-tab="regulasi">Dokumen Sekolah</button>
+        </div>
+        <div id="dokumen-content"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LAYANAN ================= -->
+  <section id="page-layanan" class="page">
+    <div class="container section">
+      <h1>Layanan Publik & Pengaduan</h1>
+      <div class="grid grid-2" style="align-items:start">
+        <div class="card">
+          <h3>Kirim Pengaduan / Konsultasi</h3>
+          <form id="form-pengaduan">
+            <div class="field"><label class="required">Jenis Layanan</label>
+              <select required name="jenis">
+                <option value="Pengaduan">Pengaduan</option>
+                <option value="Konsultasi">Konsultasi</option>
+                <option value="Administrasi">Administrasi</option>
+              </select>
+            </div>
+            <div class="field"><label class="required">Nama Lengkap</label><input required name="nama"></div>
+            <div class="form-row">
+              <div class="field"><label class="required">No. WhatsApp</label><input required name="kontak"></div>
+              <div class="field"><label>Email</label><input name="email" type="email"></div>
+            </div>
+            <div class="field"><label class="required">Isi Pesan</label><textarea required name="pesan"></textarea></div>
+            <div class="field"><label>Lampiran (opsional)</label><input type="file" id="f-lampiran-pengaduan" accept=".pdf,.jpg,.png"></div>
+            <div class="field"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="anonim" style="width:auto;height:auto"> Kirim sebagai anonim</label></div>
+            <div id="pengaduan-msg"></div>
+            <button class="btn btn-primary" type="submit">Kirim</button>
+          </form>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:20px">
+            <h3>Lacak Status Tiket</h3>
+            <form id="form-cek-tiket">
+              <div class="field"><input required id="input-no-tiket" placeholder="TKT-2026-0001"></div>
+              <button class="btn btn-outline" type="submit" style="width:100%">Lacak Status</button>
+            </form>
+            <div id="tiket-result" style="margin-top:14px"></div>
+          </div>
+          <div class="card">
+            <h3>Kontak & Jam Operasional</h3>
+            <p>📍 Jl. Pendidikan Luhur No. 45, Kebayoran Baru, Jakarta Selatan</p>
+            <p>📞 (021) 7890-1234 &nbsp; | &nbsp; WA: +62 811-9230-441</p>
+            <p>🕒 Senin - Jumat, 08.00 - 15.30 WIB</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h4>SMA Negeri Nusantara</h4>
+        <p style="font-size:13px">Jl. Pendidikan Luhur No. 45, Kebayoran Baru, Jakarta Selatan 12180</p>
+      </div>
+      <div>
+        <h4>Navigasi Cepat</h4>
+        <p><a data-page="profil">Profil Sekolah</a></p>
+        <p><a data-page="kesiswaan">Kesiswaan</a></p>
+        <p><a data-page="berita">Berita & Pengumuman</a></p>
+      </div>
+      <div>
+        <h4>Layanan Publik</h4>
+        <p><a data-page="dokumen">Unduh Dokumen</a></p>
+        <p><a data-page="layanan">Pengaduan Masyarakat</a></p>
+        <p><a data-page="ppdb">Pendaftaran PPDB</a></p>
+        <p><a href="portal/index.html">Login Guru & Admin</a></p>
+      </div>
+      <div>
+        <h4>Kontak</h4>
+        <p>📞 (021) 7890-1234</p>
+        <p>✉ info@sman-nusantara.sch.id</p>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 SMA Negeri Nusantara. Hak Cipta Dilindungi Undang-Undang.</div>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

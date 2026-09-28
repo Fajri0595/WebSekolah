@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Portal Guru & Admin — SMA Negeri Nusantara</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login-screen" class="login-wrap">
+  <div class="login-card">
+    <p class="eyebrow text-center">Portal Autentikasi Resmi</p>
+    <h1>Masuk ke Sistem Tata Kelola</h1>
+    <p class="muted text-center" style="margin-bottom:24px">Khusus Guru, Tenaga Kependidikan, dan Administrator SMA Negeri Nusantara.</p>
+    <form id="login-form">
+      <div class="field"><label class="required">Email Institusi</label><input type="email" id="login-email" required autocomplete="username"></div>
+      <div class="field"><label class="required">Kata Sandi</label><input type="password" id="login-password" required autocomplete="current-password"></div>
+      <div id="login-msg"></div>
+      <button class="btn btn-primary" type="submit" id="login-btn" style="width:100%">Masuk ke Portal</button>
+    </form>
+    <p class="muted text-center" style="margin-top:16px"><a href="../index.html">← Kembali ke Beranda Publik</a></p>
+  </div>
+</div>
+
+<!-- ================= DASHBOARD ================= -->
+<div id="dashboard-screen" class="portal-layout hidden">
+  <aside class="portal-sidebar">
+    <div class="brand-side">🎓 SMA Negeri Nusantara<br><span style="font-size:11px;font-weight:400;color:#94A3B8">Tata Kelola Terpadu</span></div>
+
+    <div class="portal-nav-label">Menu Utama</div>
+    <button class="portal-nav-item" data-nav="dashboard">Dashboard</button>
+    <button class="portal-nav-item" data-nav="konten">Konten Saya</button>
+    <button class="portal-nav-item" data-nav="galeri" data-hak="Galeri">Galeri Sekolah</button>
+    <button class="portal-nav-item" data-nav="verifikasi" data-hak="PPDB">Verifikasi PPDB</button>
+
+    <div class="portal-nav-label" data-admin-only>Administrasi</div>
+    <button class="portal-nav-item" data-nav="guru" data-admin-only>Manajemen Akun</button>
+    <button class="portal-nav-item" data-nav="periode" data-admin-only>Periode PPDB</button>
+    <button class="portal-nav-item" data-nav="dokumen" data-admin-only>Dokumen Publik</button>
+    <button class="portal-nav-item" data-nav="alumni" data-admin-only>Moderasi Alumni</button>
+    <button class="portal-nav-item" data-nav="pengaduan" data-admin-only>Layanan Pengaduan</button>
+
+    <div style="margin-top:24px;border-top:1px solid var(--navy);padding-top:12px">
+      <button class="portal-nav-item" id="btn-logout">⎋ Keluar</button>
+    </div>
+  </aside>
+
+  <div class="portal-main">
+    <header class="portal-topbar">
+      <span class="muted" id="topbar-date"></span>
+      <span><strong id="topbar-name"></strong> <span class="badge badge-warning" id="topbar-role"></span></span>
+    </header>
+
+    <div class="portal-content">
+
+      <!-- DASHBOARD -->
+      <section class="portal-page" id="pp-dashboard">
+        <div class="page-head"><h1 id="dash-title">Dashboard</h1></div>
+        <div class="stat-grid" id="dash-stats"></div>
+        <div id="dash-charts" class="grid grid-2"></div>
+      </section>
+
+      <!-- KONTEN -->
+      <section class="portal-page" id="pp-konten">
+        <div class="page-head">
+          <h1>Manajemen Konten</h1>
+          <button class="btn btn-primary" onclick="openKontenModal()">+ Tambah Konten</button>
+        </div>
+        <div id="konten-list"></div>
+      </section>
+
+      <!-- GALERI -->
+      <section class="portal-page" id="pp-galeri">
+        <div class="page-head"><h1>Manajemen Galeri</h1></div>
+        <div class="card" style="margin-bottom:20px">
+          <h3>Unggah Foto / Video</h3>
+          <form id="galeri-form">
+            <div class="form-row">
+              <div class="field"><label class="required">Tipe</label>
+                <select name="tipe" required><option value="foto">Foto</option><option value="video">Video</option></select></div>
+              <div class="field"><label>Kategori</label><input name="kategori" placeholder="Akademik, Upacara, ..."></div>
+            </div>
+            <div class="field"><label class="required">Caption</label><input name="caption" required></div>
+            <div class="field"><label class="required">Berkas (foto ≤ 5MB)</label><input type="file" id="galeri-file" accept="image/*,video/*" required></div>
+            <div id="galeri-msg"></div>
+            <button class="btn btn-primary" type="submit">Unggah ke Galeri</button>
+          </form>
+        </div>
+        <div id="galeri-list"></div>
+      </section>
+
+      <!-- VERIFIKASI PPDB -->
+      <section class="portal-page" id="pp-verifikasi">
+        <div class="page-head"><h1>Verifikasi Berkas PPDB</h1></div>
+        <div class="split">
+          <div>
+            <input id="ppdb-search" placeholder="Cari nama / no. registrasi..." style="margin-bottom:10px">
+            <div class="list-scroll" id="ppdb-list"></div>
+          </div>
+          <div id="ppdb-detail"><div class="card muted">Pilih pendaftar di sebelah kiri untuk memeriksa berkas.</div></div>
+        </div>
+      </section>
+
+      <!-- MANAJEMEN AKUN (ADMIN) -->
+      <section class="portal-page" id="pp-guru">
+        <div class="page-head">
+          <h1>Manajemen Akun Guru & Admin</h1>
+          <button class="btn btn-primary" onclick="openGuruModal()">+ Tambah Akun</button>
+        </div>
+        <div id="guru-list"></div>
+      </section>
+
+      <!-- PERIODE PPDB (ADMIN) -->
+      <section class="portal-page" id="pp-periode">
+        <div class="page-head">
+          <h1>Pengaturan Periode PPDB</h1>
+          <button class="btn btn-primary" onclick="openPeriodeModal()">+ Periode Baru</button>
+        </div>
+        <p class="muted">Hanya satu periode dengan status <strong>Buka</strong> yang dipakai form pendaftaran publik. Pastikan periode lama sudah <strong>Tutup</strong>.</p>
+        <div id="periode-list"></div>
+      </section>
+
+      <!-- DOKUMEN (ADMIN) -->
+      <section class="portal-page" id="pp-dokumen">
+        <div class="page-head"><h1>Dokumen Publik</h1></div>
+        <div class="card" style="margin-bottom:20px">
+          <h3>Unggah Dokumen Baru</h3>
+          <form id="dokumen-form">
+            <div class="form-row">
+              <div class="field"><label class="required">Nama Dokumen</label><input name="namaDokumen" required></div>
+              <div class="field"><label class="required">Kategori</label>
+                <select name="kategori" required>
+                  <option value="formulir">Formulir</option><option value="kalender">Kalender Akademik</option>
+                  <option value="panduan">Panduan</option><option value="regulasi">Dokumen Sekolah</option>
+                </select></div>
+            </div>
+            <div class="field"><label>Deskripsi</label><input name="deskripsi"></div>
+            <div class="field"><label class="required">Berkas (PDF/DOCX/XLSX, ≤ 10MB)</label><input type="file" id="dokumen-file" required></div>
+            <div id="dokumen-msg"></div>
+            <button class="btn btn-primary" type="submit">Simpan & Publikasikan</button>
+          </form>
+        </div>
+        <div id="dokumen-list"></div>
+      </section>
+
+      <!-- ALUMNI (ADMIN) -->
+      <section class="portal-page" id="pp-alumni">
+        <div class="page-head"><h1>Moderasi Data Alumni</h1></div>
+        <div id="alumni-list"></div>
+      </section>
+
+      <!-- PENGADUAN (ADMIN) -->
+      <section class="portal-page" id="pp-pengaduan">
+        <div class="page-head"><h1>Layanan Pengaduan & Konsultasi</h1></div>
+        <div class="split">
+          <div class="list-scroll" id="pengaduan-list"></div>
+          <div id="pengaduan-detail"><div class="card muted">Pilih tiket di sebelah kiri.</div></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GENERIK -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="js/portal.js"></script>
+</body>
+</html>
