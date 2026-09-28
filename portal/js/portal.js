@@ -79,6 +79,7 @@ async function doLogout(expired) {
   session = { token: null, user: null };
   $("#dashboard-screen").classList.add("hidden");
   $("#login-screen").classList.remove("hidden");
+  if (!expired) history.replaceState(null, "", location.pathname + location.search); // logout manual: bersihkan alamat halaman
   if (expired) toast($("#login-msg"), "error", "Sesi berakhir. Silakan login kembali.");
 }
 $("#btn-logout").addEventListener("click", () => doLogout(false));
@@ -94,12 +95,16 @@ function showDashboard() {
   // Sembunyikan menu sesuai role & hak khusus
   $$("[data-admin-only]").forEach(el => el.classList.toggle("hidden", !isAdmin()));
   $$("[data-hak]").forEach(el => el.classList.toggle("hidden", !hasHak(el.dataset.hak)));
-  navTo("dashboard");
+  // Kembali ke menu terakhir (dari URL) jika masih diizinkan untuk peran ini
+  const route = (location.hash || "").replace(/^#\/?/, "");
+  const btn = document.querySelector(`.portal-nav-item[data-nav="${route}"]`);
+  navTo(btn && !btn.classList.contains("hidden") ? route : "dashboard");
 }
 
 $$(".portal-nav-item[data-nav]").forEach(btn => btn.addEventListener("click", () => navTo(btn.dataset.nav)));
 
 function navTo(page) {
+  if (location.hash !== "#/" + page) history.replaceState(null, "", "#/" + page);
   $$(".portal-page").forEach(p => p.classList.remove("active"));
   $("#pp-" + page).classList.add("active");
   $$(".portal-nav-item[data-nav]").forEach(b => b.classList.toggle("active", b.dataset.nav === page));

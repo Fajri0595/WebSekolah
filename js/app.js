@@ -3,7 +3,18 @@
 // ============================================================
 
 // ---------- ROUTER ----------
+// Halaman aktif disimpan di URL (mis. ...#/profil) sehingga refresh tetap di halaman yang sama.
+function currentRoute() {
+  const r = (location.hash || "").replace(/^#\/?/, "");
+  return document.getElementById("page-" + r) ? r : "beranda";
+}
 function navigate(pageId) {
+  if (currentRoute() === pageId && location.hash === "#/" + pageId) showPage(pageId);
+  else location.hash = "/" + pageId; // memicu 'hashchange' -> showPage
+}
+window.addEventListener("hashchange", () => showPage(currentRoute()));
+
+function showPage(pageId) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   const target = document.getElementById("page-" + pageId);
   if (target) target.classList.add("active");
@@ -40,6 +51,14 @@ function loadPage(pageId) {
     case "layanan": break; // statis, tidak perlu fetch
   }
 }
+
+// ---------- PENJAGA REQUEST BASI ----------
+// Jika pengguna berpindah tab dengan cepat sebelum request sebelumnya selesai
+// (umum terjadi karena backend Apps Script kadang lambat), hasil yang datang
+// belakangan dari tab yang SUDAH DITINGGALKAN akan diabaikan.
+const _reqSeq = {};
+function nextSeq(key) { _reqSeq[key] = (_reqSeq[key] || 0) + 1; return _reqSeq[key]; }
+function isLatestSeq(key, seq) { return _reqSeq[key] === seq; }
 
 // ---------- UTIL RENDER ----------
 function el(html) { const d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstChild; }
@@ -99,9 +118,11 @@ function initTabbedContent(tabsContainerId, contentContainerId, kategoriPrefix, 
 
 async function renderKategoriList(kategori, containerId) {
   const c = document.getElementById(containerId);
+  const seq = nextSeq(containerId);
   c.innerHTML = loadingHtml();
   try {
     const items = await Api.get("konten", { kategori });
+    if (!isLatestSeq(containerId, seq)) return; // tab sudah berpindah lagi, abaikan hasil basi ini
     if (!items.length) return (c.innerHTML = emptyHtml());
     // Kategori naratif tunggal (sejarah/visimisi/sambutan/struktur) tampil sebagai artikel utuh
     if (["sejarah", "visimisi", "sambutan", "struktur", "fasilitas"].includes(kategori)) {
@@ -113,7 +134,7 @@ async function renderKategoriList(kategori, containerId) {
     } else {
       c.innerHTML = `<div class="grid grid-3">${items.map(newsCardHtml).join("")}</div>`;
     }
-  } catch (e) { c.innerHTML = emptyHtml("Gagal memuat konten."); }
+  } catch (e) { if (isLatestSeq(containerId, seq)) c.innerHTML = emptyHtml("Gagal memuat konten."); }
 }
 
 // ---------- GURU & TENAGA KEPENDIDIKAN ----------
@@ -195,9 +216,11 @@ async function renderPrestasi() {
 async function renderGaleri(tipe) {
   document.querySelectorAll("#galeri-toggle button").forEach(b => b.classList.toggle("active", b.dataset.tipe === tipe));
   const c = document.getElementById("galeri-grid");
+  const seq = nextSeq("galeri-grid");
   c.innerHTML = loadingHtml();
   try {
     const items = await Api.get("galeri", { tipe });
+    if (!isLatestSeq("galeri-grid", seq)) return;
     c.innerHTML = items.length ? `<div class="grid grid-3">${items.map(i => `
       <div class="card">
         ${tipe === "video"
@@ -206,7 +229,7 @@ async function renderGaleri(tipe) {
         <p style="margin-top:10px">${esc(i.Caption)}</p>
         <p class="muted">${formatTanggal(i.Tanggal)}</p>
       </div>`).join("")}</div>` : emptyHtml();
-  } catch (e) { c.innerHTML = emptyHtml("Gagal memuat galeri."); }
+  } catch (e) { if (isLatestSeq("galeri-grid", seq)) c.innerHTML = emptyHtml("Gagal memuat galeri."); }
 }
 
 // ---------- PPDB : Banner Periode Aktif ----------
@@ -221,7 +244,7 @@ async function loadPpdbBanner() {
       <p style="color:rgba(255,255,255,0.8)">Ditutup pada ${formatTanggal(periode.TanggalTutup)} • Kuota ${periode.Kuota} siswa • Pendaftar masuk: ${periode.TotalMasuk}</p>
       <div class="hero-actions">
         <a class="btn btn-accent" data-page="ppdb-daftar">Daftar Sekarang</a>
-        <a class="btn btn-outline" style="color:#fff;border-color:#fff" data-page="ppdb-status">Cek Status Pendaftaran</a>
+        <a class="btn btn-on-dark" data-page="ppdb-status">Cek Status Pendaftaran</a>
       </div>`;
   } catch (e) { c.innerHTML = `<p>Gagal memuat status PPDB.</p>`; }
 }
@@ -318,9 +341,11 @@ async function ppdbCekStatus(e) {
 // ---------- DOKUMEN ----------
 async function renderDokumen(kategori, containerId) {
   const c = document.getElementById(containerId);
+  const seq = nextSeq(containerId);
   c.innerHTML = loadingHtml();
   try {
     const items = await Api.get("dokumen", { kategori });
+    if (!isLatestSeq(containerId, seq)) return;
     c.innerHTML = items.length ? `
       <table><thead><tr><th>Nama Dokumen</th><th>Tanggal</th><th></th></tr></thead>
       <tbody>${items.map(d => `
@@ -328,7 +353,7 @@ async function renderDokumen(kategori, containerId) {
         <td>${formatTanggal(d.Tanggal)}</td>
         <td><a class="btn btn-outline" href="${esc(d.FileURL)}" target="_blank" rel="noopener">Unduh</a></td></tr>`).join("")}</tbody></table>`
       : emptyHtml();
-  } catch (e) { c.innerHTML = emptyHtml("Gagal memuat dokumen."); }
+  } catch (e) { if (isLatestSeq(containerId, seq)) c.innerHTML = emptyHtml("Gagal memuat dokumen."); }
 }
 
 // ---------- LAYANAN : PENGADUAN ----------
@@ -367,6 +392,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (err) { resultEl.innerHTML = `<div class="form-msg error">${err.message}</div>`; }
   });
 
-  // Halaman awal
-  navigate("beranda");
+  // Halaman awal: ikuti alamat di URL (default: beranda)
+  showPage(currentRoute());
 });
