@@ -39,7 +39,7 @@ function loadPage(pageId) {
   if (loadedPages.has(pageId)) return; // cache sederhana, cukup untuk konten yang jarang berubah
   loadedPages.add(pageId);
   switch (pageId) {
-    case "beranda": renderBeranda(); break;
+    case "beranda": renderBeranda(); renderHeroSlideshow(); break;
     case "profil": initTabbedContent("profil-tabs", "profil-content", "profil", "sejarah"); break;
     case "guru": renderGuru(); break;
     case "kesiswaan": initTabbedContent("kesiswaan-tabs", "kesiswaan-content", "kesiswaan", "kegiatan", true); break;
@@ -74,6 +74,35 @@ function newsCardHtml(item) {
       <p class="muted">${formatTanggal(item.Tanggal)}</p>
       <p>${(item.Ringkasan || "").slice(0, 120)}...</p>
     </div>`;
+}
+
+// ---------- BERANDA : SLIDESHOW HERO ----------
+// Mengambil foto dari menu Galeri (portal Guru/Admin). Beri Kategori "Beranda"
+// pada foto saat mengunggah agar dikurasi khusus untuk slide ini; jika belum
+// ada foto berkategori "Beranda", dipakai foto galeri terbaru apa saja.
+// Jika galeri masih kosong, kotak tetap tampil sebagai gradasi polos (default).
+async function renderHeroSlideshow() {
+  const box = document.getElementById("hero-photo");
+  if (!box) return;
+  try {
+    let items = await Api.get("galeri", { tipe: "foto", kategori: "Beranda" });
+    if (!items.length) items = await Api.get("galeri", { tipe: "foto" });
+    items = items.slice(0, 6);
+    if (!items.length) return; // biarkan gradasi default terlihat
+
+    box.innerHTML = items.map((it, i) => `
+      <img class="hero-slide ${i === 0 ? "active" : ""}" src="${esc(driveImg(it.URL))}" alt="${esc(it.Caption || "")}">`).join("");
+
+    if (items.length > 1) {
+      let idx = 0;
+      setInterval(() => {
+        const slides = box.querySelectorAll(".hero-slide");
+        slides[idx].classList.remove("active");
+        idx = (idx + 1) % slides.length;
+        slides[idx].classList.add("active");
+      }, 4500);
+    }
+  } catch (e) { /* biarkan gradasi default jika gagal dimuat */ }
 }
 
 // ---------- BERANDA ----------
