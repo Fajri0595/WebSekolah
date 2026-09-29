@@ -14,7 +14,7 @@ const KATEGORI_KONTEN = [
 const STATUS_PPDB = ["Terkirim", "Sedang Diverifikasi", "Lolos Berkas", "Ditolak"];
 
 let session = { token: null, user: null };
-const cache = { konten: [], guru: [], periode: [], ppdb: [], pengaduan: [] };
+const cache = { konten: [], guru: [], guruPublik: [], periode: [], ppdb: [], pengaduan: [] };
 
 // ---------- UTIL ----------
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -43,6 +43,35 @@ async function authPost(action, payload = {}) {
     if (/Sesi/.test(err.message)) { doLogout(true); }
     throw err;
   }
+}
+
+// ---------- EDITOR TEKS KAYA (Bold, Miring, Garis Bawah, Daftar) ----------
+// Memakai contenteditable + document.execCommand: sederhana, tanpa pustaka
+// tambahan, dan hasilnya adalah HTML yang sama seperti yang dipakai backend.
+function richEditorHtml(editorId, initialHtml) {
+  return `
+    <div class="rich-toolbar" data-target="${editorId}">
+      <button type="button" data-cmd="bold" title="Tebal"><b>B</b></button>
+      <button type="button" data-cmd="italic" title="Miring"><i>I</i></button>
+      <button type="button" data-cmd="underline" title="Garis bawah"><u>U</u></button>
+      <span class="rich-sep"></span>
+      <button type="button" data-cmd="insertUnorderedList" title="Daftar bertitik">• List</button>
+      <button type="button" data-cmd="insertOrderedList" title="Daftar bernomor">1. List</button>
+      <span class="rich-sep"></span>
+      <button type="button" data-cmd="formatBlock" data-val="H3" title="Sub-judul">H3</button>
+      <button type="button" data-cmd="formatBlock" data-val="P" title="Paragraf normal">P</button>
+    </div>
+    <div class="rich-editor" id="${editorId}" contenteditable="true">${initialHtml || ""}</div>`;
+}
+function bindRichEditor(editorId) {
+  const toolbar = document.querySelector(`.rich-toolbar[data-target="${editorId}"]`);
+  const editor = document.getElementById(editorId);
+  toolbar.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      editor.focus();
+      document.execCommand(btn.dataset.cmd, false, btn.dataset.val || undefined);
+    });
+  });
 }
 
 // ---------- MODAL ----------
@@ -110,7 +139,8 @@ function navTo(page) {
   $$(".portal-nav-item[data-nav]").forEach(b => b.classList.toggle("active", b.dataset.nav === page));
   const loaders = {
     dashboard: renderDashboard, konten: renderKonten, galeri: renderGaleriAdmin, verifikasi: renderVerifikasi,
-    guru: renderGuru, periode: renderPeriode, dokumen: renderDokumenAdmin, alumni: renderAlumni, pengaduan: renderPengaduan
+    "guru-publik": renderGuruPublik, akun: renderGuru, periode: renderPeriode, dokumen: renderDokumenAdmin,
+    alumni: renderAlumni, pengaduan: renderPengaduan
   };
   if (loaders[page]) loaders[page]();
 }
@@ -183,21 +213,32 @@ function openKontenModal(id) {
         <select name="kategori" required>${KATEGORI_KONTEN.map(([v, l]) => `<option value="${v}" ${k && k.Kategori === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
       <div class="field"><label class="required">Judul</label><input name="judul" required value="${esc(k ? k.Judul : "")}"></div>
       <div class="field"><label>Ringkasan (tampil di kartu)</label><input name="ringkasan" value="${esc(k ? k.Ringkasan : "")}"></div>
-      <div class="field"><label class="required">Isi (boleh HTML sederhana: &lt;p&gt;, &lt;b&gt;, &lt;ul&gt;)</label>
-        <textarea name="isi" required style="min-height:180px">${esc(k ? k.Isi : "")}</textarea></div>
-      <div class="field"><label>Link Gambar (Google Drive dibagikan "Anyone with the link")</label><input name="gambarUrl" value="${esc(k ? k.GambarURL : "")}"></div>
+      <div class="field"><label class="required">Isi</label>
+        ${richEditorHtml("konten-isi-editor", k ? k.Isi : "")}</div>
+      <div class="field"><label>Gambar Sampul</label>
+        <input type="file" id="konten-gambar-file" accept="image/*">
+        <input type="hidden" name="gambarUrl" id="konten-gambar-url" value="${esc(k ? k.GambarURL : "")}">
+        ${k && k.GambarURL ? `<p class="muted" style="margin-top:6px">Sudah ada gambar sampul. Pilih berkas baru untuk menggantinya, atau biarkan kosong untuk tetap memakai yang lama.</p>` : ""}</div>
       <div class="field"><label class="required">Status</label>
         <select name="status"><option value="Draft" ${k && k.Status === "Draft" ? "selected" : ""}>Draft</option><option value="Publish" ${k && k.Status === "Publish" ? "selected" : ""}>Publish</option></select></div>
       <div id="modal-msg"></div>
       <div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal()">Batal</button><button class="btn btn-primary" type="submit">Simpan</button></div>
     </form>`);
+  bindRichEditor("konten-isi-editor");
   $("#konten-form").addEventListener("submit", async e => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
+    d.isi = document.getElementById("konten-isi-editor").innerHTML.trim();
+    if (!d.isi || d.isi === "<br>") return toast($("#modal-msg"), "error", "Isi konten tidak boleh kosong.");
+    const btn = e.target.querySelector("button[type=submit]");
+    btn.disabled = true; btn.textContent = "Menyimpan...";
     try {
+      const gambarFile = document.getElementById("konten-gambar-file").files[0];
+      if (gambarFile) d.file = await fileToBase64(gambarFile);
       await authPost("saveContent", { id: k ? k.ID : undefined, ...d });
       closeModal(); renderKonten();
     } catch (err) { toast($("#modal-msg"), "error", err.message); }
+    btn.disabled = false; btn.textContent = "Simpan";
   });
 }
 
@@ -301,6 +342,61 @@ async function simpanStatusPpdb(id) {
     toast($("#ppdb-msg"), "success", res.message);
     cache.ppdb = await authPost("getPPDBAntrean"); drawPpdbList(id);
   } catch (err) { toast($("#ppdb-msg"), "error", err.message); }
+}
+
+// ============================================================
+// DIREKTORI GURU & TENAGA KEPENDIDIKAN PUBLIK (Admin)
+// ============================================================
+async function renderGuruPublik() {
+  const el = $("#guru-publik-list"); el.innerHTML = loading;
+  try {
+    cache.guruPublik = (await Api.get("guru")).sort((a, b) => (a.Urutan || 999) - (b.Urutan || 999));
+    el.innerHTML = cache.guruPublik.length ? `<table><thead><tr><th></th><th>Nama</th><th>NIP</th><th>Jabatan</th><th>Bidang Studi</th><th>Urutan</th><th></th></tr></thead><tbody>
+      ${cache.guruPublik.map(g => `<tr>
+        <td>${g.FotoURL ? `<img src="${esc(driveImg(g.FotoURL))}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : "—"}</td>
+        <td>${esc(g.Nama)}</td><td>${esc(g.NIP || "—")}</td><td>${esc(g.Jabatan)}</td><td>${esc(g.BidangStudi || "—")}</td><td>${esc(g.Urutan || "—")}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-outline btn-sm" onclick="openGuruPublikModal('${esc(g.ID)}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="hapusGuruPublik('${esc(g.ID)}')">Hapus</button>
+        </td></tr>`).join("")}</tbody></table>`
+      : `<div class="loading">Direktori masih kosong. Klik "+ Tambah Data" untuk mulai mengisi.</div>`;
+  } catch (err) { el.innerHTML = `<div class="form-msg error">${esc(err.message)}</div>`; }
+}
+
+function openGuruPublikModal(id) {
+  const g = id ? cache.guruPublik.find(x => String(x.ID) === String(id)) : null;
+  openModal(`
+    <h2>${g ? "Edit" : "Tambah"} Data Guru & Tendik</h2>
+    <form id="guru-publik-form">
+      <div class="field"><label class="required">Nama Lengkap & Gelar</label><input name="nama" required value="${esc(g ? g.Nama : "")}"></div>
+      <div class="form-row">
+        <div class="field"><label>NIP</label><input name="nip" value="${esc(g ? g.NIP : "")}"></div>
+        <div class="field"><label>Urutan Tampil</label><input name="urutan" type="number" min="1" value="${esc(g ? g.Urutan : "")}" placeholder="1, 2, 3, ..."></div>
+      </div>
+      <div class="field"><label class="required">Jabatan</label><input name="jabatan" required value="${esc(g ? g.Jabatan : "")}" placeholder="Kepala Sekolah, Wakasek Kurikulum, Guru Matematika, ..."></div>
+      <div class="field"><label>Bidang Studi</label><input name="bidangStudi" value="${esc(g ? g.BidangStudi : "")}"></div>
+      <div class="field"><label>Foto (3x4, opsional)</label><input type="file" id="guru-publik-foto" accept="image/*">
+        ${g && g.FotoURL ? `<p class="muted" style="margin-top:6px">Sudah ada foto. Pilih berkas baru untuk mengganti.</p>` : ""}</div>
+      <div id="modal-msg"></div>
+      <div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal()">Batal</button><button class="btn btn-primary" type="submit">Simpan</button></div>
+    </form>`);
+  $("#guru-publik-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Menyimpan...";
+    try {
+      const foto = document.getElementById("guru-publik-foto").files[0];
+      if (foto) d.file = await fileToBase64(foto);
+      await authPost("saveGuruPublik", { id: g ? g.ID : undefined, ...d });
+      closeModal(); renderGuruPublik();
+    } catch (err) { toast($("#modal-msg"), "error", err.message); }
+    btn.disabled = false; btn.textContent = "Simpan";
+  });
+}
+
+async function hapusGuruPublik(id) {
+  if (!confirm("Hapus data ini dari direktori publik?")) return;
+  try { await authPost("deleteGuruPublik", { id }); renderGuruPublik(); } catch (err) { alert(err.message); }
 }
 
 // ============================================================

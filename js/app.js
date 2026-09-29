@@ -52,6 +52,26 @@ function loadPage(pageId) {
   }
 }
 
+// ---------- DETAIL KONTEN (modal) ----------
+// Menyimpan item yang sedang ditampilkan di kartu (Berita/Pengumuman/Artikel/
+// Prestasi) agar saat kartu diklik, isi lengkapnya bisa dibuka tanpa fetch ulang.
+const contentIndex = {};
+function indexItems(items) { items.forEach(i => { contentIndex[i.ID] = i; }); }
+
+function openContentDetail(id) {
+  const item = contentIndex[id];
+  if (!item) return;
+  document.getElementById("detail-box").innerHTML = `
+    <button type="button" class="btn btn-outline btn-sm" style="float:right" onclick="closeDetailModal()">✕ Tutup</button>
+    <span class="pill">${esc(item.Kategori)}</span>
+    <h2 style="margin-top:12px">${esc(item.Judul)}</h2>
+    <p class="muted">${formatTanggal(item.Tanggal)}</p>
+    ${item.GambarURL ? `<img src="${esc(driveImg(item.GambarURL))}" style="width:100%;border-radius:8px;margin:12px 0" alt="${esc(item.Judul)}">` : ""}
+    <div style="margin-top:12px;line-height:1.7">${item.Isi || ""}</div>`;
+  document.getElementById("detail-overlay").classList.add("open");
+}
+function closeDetailModal() { document.getElementById("detail-overlay").classList.remove("open"); }
+
 // ---------- PENJAGA REQUEST BASI ----------
 // Jika pengguna berpindah tab dengan cepat sebelum request sebelumnya selesai
 // (umum terjadi karena backend Apps Script kadang lambat), hasil yang datang
@@ -66,13 +86,15 @@ function loadingHtml() { return `<div class="loading">Memuat data...</div>`; }
 function emptyHtml(msg) { return `<div class="loading">${msg || "Belum ada data."}</div>`; }
 
 function newsCardHtml(item) {
+  contentIndex[item.ID] = item;
   return `
-    <div class="card news-card">
+    <div class="card news-card" style="cursor:pointer" onclick="openContentDetail('${esc(item.ID)}')">
       <img src="${esc(driveImg(item.GambarURL))}" alt="${esc(item.Judul)}" onerror="this.style.background='var(--surface)'">
-      <span class="pill" style="margin-top:12px">${item.Kategori}</span>
-      <h3 style="margin-top:10px">${item.Judul}</h3>
+      <span class="pill" style="margin-top:12px">${esc(item.Kategori)}</span>
+      <h3 style="margin-top:10px">${esc(item.Judul)}</h3>
       <p class="muted">${formatTanggal(item.Tanggal)}</p>
-      <p>${(item.Ringkasan || "").slice(0, 120)}...</p>
+      <p>${esc((item.Ringkasan || "").slice(0, 120))}...</p>
+      <span style="color:var(--navy);font-weight:600;font-size:13px">Baca selengkapnya →</span>
     </div>`;
 }
 
@@ -117,10 +139,11 @@ async function renderBeranda() {
   } catch (e) { beritaEl.innerHTML = emptyHtml("Gagal memuat berita."); }
   try {
     const prestasi = await Api.get("konten", { kategori: "prestasi", limit: 4 });
+    indexItems(prestasi);
     prestasiEl.innerHTML = prestasi.length ? prestasi.map(p => `
-      <div class="card">
+      <div class="card" style="cursor:pointer" onclick="openContentDetail('${esc(p.ID)}')">
         <span class="pill" style="background:var(--gold)">Prestasi</span>
-        <h3 style="margin-top:10px">${p.Judul}</h3>
+        <h3 style="margin-top:10px">${esc(p.Judul)}</h3>
         <p class="muted">${formatTanggal(p.Tanggal)}</p>
       </div>`).join("") : emptyHtml();
   } catch (e) { prestasiEl.innerHTML = emptyHtml("Gagal memuat prestasi."); }
@@ -157,7 +180,8 @@ async function renderKategoriList(kategori, containerId) {
     if (["sejarah", "visimisi", "sambutan", "struktur", "fasilitas"].includes(kategori)) {
       c.innerHTML = items.map(i => `
         <article class="card" style="margin-bottom:16px">
-          <h2>${i.Judul}</h2>
+          <h2>${esc(i.Judul)}</h2>
+          ${i.GambarURL ? `<img src="${esc(driveImg(i.GambarURL))}" style="width:100%;border-radius:8px;margin-bottom:16px" alt="${esc(i.Judul)}">` : ""}
           <div>${i.Isi}</div>
         </article>`).join("");
     } else {
@@ -419,6 +443,11 @@ document.addEventListener("DOMContentLoaded", () => {
           ${data.Balasan ? `<p><strong>Balasan sekolah:</strong> ${esc(data.Balasan)}</p>` : ""}
         </div>`;
     } catch (err) { resultEl.innerHTML = `<div class="form-msg error">${err.message}</div>`; }
+  });
+
+  // Klik di luar kotak detail konten -> tutup (aman karena hanya menampilkan, bukan form isian)
+  document.getElementById("detail-overlay").addEventListener("click", e => {
+    if (e.target.id === "detail-overlay") closeDetailModal();
   });
 
   // Halaman awal: ikuti alamat di URL (default: beranda)

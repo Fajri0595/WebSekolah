@@ -9,7 +9,7 @@
 <link rel="icon" type="image/x-icon" href="../favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="../img/favicon-32.png">
 <link rel="apple-touch-icon" href="../img/favicon-180.png">
-<link rel="stylesheet" href="../css/style.css?v=202609282142">
+<link rel="stylesheet" href="../css/style.css?v=202609292331">
 </head>
 <body>
 
@@ -44,7 +44,8 @@
     <button class="portal-nav-item" data-nav="verifikasi" data-hak="PPDB">Verifikasi PPDB</button>
 
     <div class="portal-nav-label" data-admin-only>Administrasi</div>
-    <button class="portal-nav-item" data-nav="guru" data-admin-only>Manajemen Akun</button>
+    <button class="portal-nav-item" data-nav="guru-publik" data-admin-only>Guru & Tendik (Direktori)</button>
+    <button class="portal-nav-item" data-nav="akun" data-admin-only>Manajemen Akun Login</button>
     <button class="portal-nav-item" data-nav="periode" data-admin-only>Periode PPDB</button>
     <button class="portal-nav-item" data-nav="dokumen" data-admin-only>Dokumen Publik</button>
     <button class="portal-nav-item" data-nav="alumni" data-admin-only>Moderasi Alumni</button>
@@ -112,9 +113,18 @@
       </section>
 
       <!-- MANAJEMEN AKUN (ADMIN) -->
-      <section class="portal-page" id="pp-guru">
+      <section class="portal-page" id="pp-guru-publik">
         <div class="page-head">
-          <h1>Manajemen Akun Guru & Admin</h1>
+          <h1>Direktori Guru & Tenaga Kependidikan</h1>
+          <button class="btn btn-primary" onclick="openGuruPublikModal()">+ Tambah Data</button>
+        </div>
+        <p class="muted">Data ini yang tampil di halaman publik "Guru & Tendik" — berbeda dari akun login di bawah.</p>
+        <div id="guru-publik-list"></div>
+      </section>
+
+      <section class="portal-page" id="pp-akun">
+        <div class="page-head">
+          <h1>Manajemen Akun Login (Guru & Admin)</h1>
           <button class="btn btn-primary" onclick="openGuruModal()">+ Tambah Akun</button>
         </div>
         <div id="guru-list"></div>
@@ -177,8 +187,8 @@
   <div class="modal-box" id="modal-box"></div>
 </div>
 
-<script src="../js/config.js?v=202609282142"></script>
-<script src="../js/api.js?v=202609282142"></script>
-<script src="js/portal.js?v=202609282142"></script>
+<script src="../js/config.js?v=202609292331"></script>
+<script src="../js/api.js?v=202609292331"></script>
+<script src="js/portal.js?v=202609292331"></script>
 </body>
 </html>
