@@ -72,6 +72,28 @@ function openContentDetail(id) {
 }
 function closeDetailModal() { document.getElementById("detail-overlay").classList.remove("open"); }
 
+// ---------- SUMBER DATA (bulk fetch sekali + filter instan di klien) ----------
+// Prinsip gas-instant-ux: daripada memanggil server setiap kali pengguna
+// berpindah tab (Sejarah/Visi Misi/Berita/dst.), seluruh data publik yang
+// relevan diambil SEKALI per jenis lalu disaring di browser -- perpindahan
+// tab jadi instan (0ms, tanpa memanggil server sama sekali) dan reload halaman
+// pun langsung tampil dari cache localStorage sebelum diperbarui diam-diam.
+const bulk = { konten: null, galeri: null, dokumen: null, guru: null, alumni: null };
+const onUpdate = { konten: null, galeri: null, dokumen: null, guru: null, alumni: null };
+
+function ensureBulk(type, action, params = {}) {
+  if (bulk[type]) return Promise.resolve(bulk[type]);
+  return cachedGet(type + "_semua", action, params, fresh => {
+    bulk[type] = fresh;
+    if (onUpdate[type]) onUpdate[type](); // render ulang tab yang sedang tampil, diam-diam
+  }).then(data => { bulk[type] = data; return data; });
+}
+const ensureKontenAll = () => ensureBulk("konten", "kontenSemua");
+const ensureGaleriAll = () => ensureBulk("galeri", "galeri");
+const ensureDokumenAll = () => ensureBulk("dokumen", "dokumen");
+const ensureGuruAll = () => ensureBulk("guru", "guru");
+const ensureAlumniAll = () => ensureBulk("alumni", "alumni");
+
 // ---------- PENJAGA REQUEST BASI ----------
 // Jika pengguna berpindah tab dengan cepat sebelum request sebelumnya selesai
 // (umum terjadi karena backend Apps Script kadang lambat), hasil yang datang
@@ -107,8 +129,9 @@ async function renderHeroSlideshow() {
   const box = document.getElementById("hero-photo");
   if (!box) return;
   try {
-    let items = await Api.get("galeri", { tipe: "foto", kategori: "Beranda" });
-    if (!items.length) items = await Api.get("galeri", { tipe: "foto" });
+    const all = await ensureGaleriAll();
+    let items = all.filter(i => i.Tipe === "foto" && i.Kategori === "Beranda");
+    if (!items.length) items = all.filter(i => i.Tipe === "foto");
     items = items.slice(0, 6);
     if (!items.length) return; // biarkan gradasi default terlihat
 
@@ -119,6 +142,7 @@ async function renderHeroSlideshow() {
       let idx = 0;
       setInterval(() => {
         const slides = box.querySelectorAll(".hero-slide");
+        if (!slides.length) return;
         slides[idx].classList.remove("active");
         idx = (idx + 1) % slides.length;
         slides[idx].classList.add("active");
@@ -131,22 +155,24 @@ async function renderHeroSlideshow() {
 async function renderBeranda() {
   const beritaEl = document.getElementById("beranda-berita");
   const prestasiEl = document.getElementById("beranda-prestasi");
-  beritaEl.innerHTML = loadingHtml();
-  prestasiEl.innerHTML = loadingHtml();
+  onUpdate.konten = renderBeranda; // supaya kartu terbaru ikut ter-refresh diam-diam
+  if (!bulk.konten) { beritaEl.innerHTML = loadingHtml(); prestasiEl.innerHTML = loadingHtml(); }
   try {
-    const berita = await Api.get("konten", { kategori: "berita", limit: 3 });
-    beritaEl.innerHTML = berita.length ? berita.map(newsCardHtml).join("") : emptyHtml();
-  } catch (e) { beritaEl.innerHTML = emptyHtml("Gagal memuat berita."); }
-  try {
-    const prestasi = await Api.get("konten", { kategori: "prestasi", limit: 4 });
+    const all = await ensureKontenAll();
+    const berita = all.filter(i => i.Kategori === "berita").slice(0, 3);
+    const prestasi = all.filter(i => i.Kategori === "prestasi").slice(0, 4);
     indexItems(prestasi);
+    beritaEl.innerHTML = berita.length ? berita.map(newsCardHtml).join("") : emptyHtml();
     prestasiEl.innerHTML = prestasi.length ? prestasi.map(p => `
       <div class="card" style="cursor:pointer" onclick="openContentDetail('${esc(p.ID)}')">
         <span class="pill" style="background:var(--gold)">Prestasi</span>
         <h3 style="margin-top:10px">${esc(p.Judul)}</h3>
         <p class="muted">${formatTanggal(p.Tanggal)}</p>
       </div>`).join("") : emptyHtml();
-  } catch (e) { prestasiEl.innerHTML = emptyHtml("Gagal memuat prestasi."); }
+  } catch (e) {
+    beritaEl.innerHTML = emptyHtml("Gagal memuat berita.");
+    prestasiEl.innerHTML = emptyHtml("Gagal memuat prestasi.");
+  }
 }
 
 // ---------- TAB GENERIK (Profil, Kesiswaan, Berita, Dokumen) ----------
@@ -171,10 +197,12 @@ function initTabbedContent(tabsContainerId, contentContainerId, kategoriPrefix, 
 async function renderKategoriList(kategori, containerId) {
   const c = document.getElementById(containerId);
   const seq = nextSeq(containerId);
-  c.innerHTML = loadingHtml();
+  onUpdate.konten = () => { if (isLatestSeq(containerId, seq)) renderKategoriList(kategori, containerId); };
+  if (!bulk.konten) c.innerHTML = loadingHtml(); // hanya tampil kalau BENAR-BENAR belum ada cache sama sekali
   try {
-    const items = await Api.get("konten", { kategori });
+    const all = await ensureKontenAll();
     if (!isLatestSeq(containerId, seq)) return; // tab sudah berpindah lagi, abaikan hasil basi ini
+    const items = all.filter(i => i.Kategori === kategori);
     if (!items.length) return (c.innerHTML = emptyHtml());
     // Kategori naratif tunggal (sejarah/visimisi/sambutan/struktur) tampil sebagai artikel utuh
     if (["sejarah", "visimisi", "sambutan", "struktur", "fasilitas"].includes(kategori)) {
@@ -193,16 +221,17 @@ async function renderKategoriList(kategori, containerId) {
 // ---------- GURU & TENAGA KEPENDIDIKAN ----------
 async function renderGuru() {
   const c = document.getElementById("guru-grid");
-  c.innerHTML = loadingHtml();
+  onUpdate.guru = renderGuru;
+  if (!bulk.guru) c.innerHTML = loadingHtml();
   try {
-    const list = await Api.get("guru");
+    const list = await ensureGuruAll();
     c.innerHTML = list.length ? list.map(g => `
       <div class="card text-center">
         <img src="${esc(driveImg(g.FotoURL))}" style="width:88px;height:88px;border-radius:50%;object-fit:cover;margin:0 auto 12px;border:2px solid var(--gold)">
         <h3 style="font-size:16px">${esc(g.Nama)}</h3>
-        <p class="muted">NIP. ${g.NIP || '-'}</p>
-        <p style="color:var(--navy);font-weight:600">${g.Jabatan}</p>
-        <span class="pill">${g.BidangStudi || '-'}</span>
+        <p class="muted">NIP. ${esc(g.NIP || '-')}</p>
+        <p style="color:var(--navy);font-weight:600">${esc(g.Jabatan)}</p>
+        <span class="pill">${esc(g.BidangStudi || '-')}</span>
       </div>`).join("") : emptyHtml();
   } catch (e) { c.innerHTML = emptyHtml("Gagal memuat data guru."); }
 }
@@ -246,21 +275,27 @@ async function renderAlumniTab(containerId) {
   });
 
   try {
-    const list = await Api.get("alumni");
+    const list = await ensureAlumniAll();
+    onUpdate.alumni = async () => { document.getElementById("alumni-table").innerHTML = renderAlumniTable(await ensureAlumniAll()); };
     const tableEl = document.getElementById("alumni-table");
-    tableEl.innerHTML = list.length ? `
+    tableEl.innerHTML = renderAlumniTable(list);
+  } catch (e) { document.getElementById("alumni-table").innerHTML = emptyHtml(); }
+}
+function renderAlumniTable(list) {
+  return list.length ? `
       <table><thead><tr><th>Nama</th><th>Angkatan</th><th>Profesi</th><th>Kontak</th></tr></thead>
       <tbody>${list.map(a => `<tr><td>${esc(a.Nama)}</td><td>${esc(a.TahunLulus)}</td><td>${esc(a.Pekerjaan)}</td><td>${esc(a.Kontak)}</td></tr>`).join("")}</tbody></table>`
-      : emptyHtml("Belum ada data alumni terverifikasi.");
-  } catch (e) { document.getElementById("alumni-table").innerHTML = emptyHtml(); }
+    : emptyHtml("Belum ada data alumni terverifikasi.");
 }
 
 // ---------- PRESTASI ----------
 async function renderPrestasi() {
   const c = document.getElementById("prestasi-grid");
-  c.innerHTML = loadingHtml();
+  onUpdate.konten = renderPrestasi;
+  if (!bulk.konten) c.innerHTML = loadingHtml();
   try {
-    const items = await Api.get("konten", { kategori: "prestasi" });
+    const all = await ensureKontenAll();
+    const items = all.filter(i => i.Kategori === "prestasi");
     c.innerHTML = items.length ? items.map(newsCardHtml).join("") : emptyHtml();
   } catch (e) { c.innerHTML = emptyHtml("Gagal memuat prestasi."); }
 }
@@ -270,10 +305,12 @@ async function renderGaleri(tipe) {
   document.querySelectorAll("#galeri-toggle button").forEach(b => b.classList.toggle("active", b.dataset.tipe === tipe));
   const c = document.getElementById("galeri-grid");
   const seq = nextSeq("galeri-grid");
-  c.innerHTML = loadingHtml();
+  onUpdate.galeri = () => { if (isLatestSeq("galeri-grid", seq)) renderGaleri(tipe); };
+  if (!bulk.galeri) c.innerHTML = loadingHtml();
   try {
-    const items = await Api.get("galeri", { tipe });
+    const all = await ensureGaleriAll();
     if (!isLatestSeq("galeri-grid", seq)) return;
+    const items = all.filter(i => i.Tipe === tipe);
     c.innerHTML = items.length ? `<div class="grid grid-3">${items.map(i => `
       <div class="card">
         ${tipe === "video"
@@ -395,14 +432,16 @@ async function ppdbCekStatus(e) {
 async function renderDokumen(kategori, containerId) {
   const c = document.getElementById(containerId);
   const seq = nextSeq(containerId);
-  c.innerHTML = loadingHtml();
+  onUpdate.dokumen = () => { if (isLatestSeq(containerId, seq)) renderDokumen(kategori, containerId); };
+  if (!bulk.dokumen) c.innerHTML = loadingHtml();
   try {
-    const items = await Api.get("dokumen", { kategori });
+    const all = await ensureDokumenAll();
     if (!isLatestSeq(containerId, seq)) return;
+    const items = all.filter(i => i.Kategori === kategori);
     c.innerHTML = items.length ? `
       <table><thead><tr><th>Nama Dokumen</th><th>Tanggal</th><th></th></tr></thead>
       <tbody>${items.map(d => `
-        <tr><td>${d.NamaDokumen}<br><span class="muted">${d.Deskripsi || ""}</span></td>
+        <tr><td>${esc(d.NamaDokumen)}<br><span class="muted">${esc(d.Deskripsi || "")}</span></td>
         <td>${formatTanggal(d.Tanggal)}</td>
         <td><a class="btn btn-outline" href="${esc(d.FileURL)}" target="_blank" rel="noopener">Unduh</a></td></tr>`).join("")}</tbody></table>`
       : emptyHtml();

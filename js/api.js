@@ -86,3 +86,47 @@ function driveImg(url) {
   const m = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/) || String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
   return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
 }
+
+// ============================================================
+// CACHE KLIEN — skill gas-instant-ux prinsip #1 & #2
+// Data publik disimpan di localStorage + memori supaya perpindahan tab dan
+// pemuatan ulang halaman terasa instan: tampilkan cache lama SEKETIKA (0ms),
+// lalu diam-diam ambil data terbaru di latar belakang (stale-while-revalidate).
+// Baru menunggu server seperti biasa kalau memang belum ada cache sama sekali
+// (kunjungan pertama kali).
+// ============================================================
+const ClientCache = {
+  mem: {},
+  read(key) {
+    if (key in this.mem) return this.mem[key];
+    try {
+      const raw = localStorage.getItem("sman_cache_" + key);
+      if (!raw) return null;
+      this.mem[key] = JSON.parse(raw).data;
+      return this.mem[key];
+    } catch (e) { return null; }
+  },
+  write(key, data) {
+    this.mem[key] = data;
+    try { localStorage.setItem("sman_cache_" + key, JSON.stringify({ data, ts: Date.now() })); }
+    catch (e) { /* localStorage penuh/nonaktif -> cukup pakai cache memori */ }
+  }
+};
+
+/**
+ * Ambil data dengan pola stale-while-revalidate.
+ * - Ada cache -> kembalikan SEKETIKA, lalu perbarui diam-diam di latar belakang
+ *   dan panggil onUpdate(freshData) hanya jika datanya benar-benar berubah.
+ * - Belum ada cache -> tunggu server seperti biasa (baru pertama kali situs dibuka).
+ */
+async function cachedGet(cacheKey, action, params, onUpdate) {
+  const cached = ClientCache.read(cacheKey);
+  const revalidate = () => Api.get(action, params).then(fresh => {
+    const changed = JSON.stringify(fresh) !== JSON.stringify(ClientCache.read(cacheKey));
+    ClientCache.write(cacheKey, fresh);
+    if (changed && onUpdate) onUpdate(fresh);
+    return fresh;
+  });
+  if (cached) { revalidate().catch(() => {}); return cached; }
+  return revalidate();
+}
