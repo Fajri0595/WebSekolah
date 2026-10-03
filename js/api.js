@@ -50,9 +50,13 @@ const Api = {
 /**
  * Ubah <input type="file"> menjadi objek {name, type, base64} untuk dikirim ke backend.
  */
-function fileToBase64(file) {
+function fileToBase64(file, maxMb = 5) {
   return new Promise((resolve, reject) => {
     if (!file) return resolve(null);
+    const maxBytes = maxMb * 1024 * 1024;
+    if (file.size > maxBytes) {
+      return reject(new Error("Ukuran file '" + file.name + "' terlalu besar (" + (file.size / (1024 * 1024)).toFixed(1) + " MB). Batas maksimum adalah " + maxMb + " MB. Silakan kompres berkas Anda terlebih dahulu."));
+    }
     const reader = new FileReader();
     reader.onload = () => resolve({ name: file.name, type: file.type, base64: reader.result });
     reader.onerror = reject;

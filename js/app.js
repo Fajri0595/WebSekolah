@@ -12,7 +12,22 @@ function navigate(pageId) {
   if (currentRoute() === pageId && location.hash === "#/" + pageId) showPage(pageId);
   else location.hash = "/" + pageId; // memicu 'hashchange' -> showPage
 }
-window.addEventListener("hashchange", () => showPage(currentRoute()));
+window.addEventListener("hashchange", () => handleRouteWithParams());
+
+function handleRouteWithParams() {
+  const hash = location.hash || "";
+  const [routePart, queryPart] = hash.replace(/^#\/?/, "").split("?");
+  const pageId = document.getElementById("page-" + routePart) ? routePart : "beranda";
+  showPage(pageId);
+  if (queryPart) {
+    const params = new URLSearchParams(queryPart);
+    const contentId = params.get("id");
+    if (contentId) {
+      // Buka otomatis detail konten jika link memiliki param ?id=...
+      setTimeout(() => openContentDetail(contentId), 400);
+    }
+  }
+}
 
 function showPage(pageId) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
@@ -386,13 +401,20 @@ async function ppdbSubmit(e) {
     }
 
     const res = await Api.post("daftarPPDB", { ...ppdbData, files: { dokumenUmum, ktpOrtu, kk, dokumenLain } });
+    const waText = encodeURIComponent("Halo Panitia PPDB " + SCHOOL.name + ", saya telah mendaftar PPDB Online.\\n\\nNama Siswa: " + ppdbData.namaSiswa + "\\nNo. Registrasi: " + res.noRegistrasi + "\\n\\nMohon info verifikasi berkas selanjutnya. Terima kasih!");
+    const waLink = "https://wa.me/" + SCHOOL.whatsapp.replace(/[^0-9]/g, "") + "?text=" + waText;
     document.getElementById("ppdb-step-3").innerHTML = `
       <div class="form-msg success">
         <h3 style="margin:0 0 8px">${res.message}</h3>
-        <p>Nomor Registrasi Anda: <strong style="font-size:18px">${esc(res.noRegistrasi)}</strong></p>
-        <p>Simpan nomor ini untuk mengecek status verifikasi berkas.</p>
-      </div>
-      <a class="btn btn-primary" data-page="ppdb-status">Cek Status Sekarang</a>`;
+        <p>Nomor Registrasi Anda: <strong style="font-size:20px;color:#1E3A5F">${esc(res.noRegistrasi)}</strong></p>
+        <p>Simpan nomor ini untuk mengecek status verifikasi berkas Anda.</p>
+        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+          <a href="${waLink}" target="_blank" rel="noopener" class="btn" style="background:#25D366;color:#fff;display:inline-flex;align-items:center;gap:6px">
+            💬 Konfirmasi ke WhatsApp Panitia
+          </a>
+          <a class="btn btn-primary" data-page="ppdb-status">Cek Status Sekarang</a>
+        </div>
+      </div>`;
   } catch (err) {
     msgEl.innerHTML = `<div class="form-msg error">${err.message}</div>`;
     btn.disabled = false; btn.textContent = "Kirim Pendaftaran";
@@ -463,7 +485,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const lampiran = await fileToBase64(document.getElementById("f-lampiran-pengaduan").files[0]);
       if (lampiran) data.lampiran = lampiran;
       const res = await Api.post("kirimPengaduan", data);
-      msgEl.innerHTML = `<div class="form-msg success">${res.message} Nomor tiket: <strong>${res.noTiket}</strong></div>`;
+      const waPengaduanText = encodeURIComponent("Halo Layanan Pengaduan " + SCHOOL.name + ", saya telah mengirim tiket pengaduan.\\n\\nNo. Tiket: " + res.noTiket + "\\nNama: " + (data.anonim ? "Anonim" : data.nama) + "\\nJenis: " + data.jenis + "\\n\\nMohon ditindaklanjuti. Terima kasih!");
+      const waPengaduanLink = "https://wa.me/" + SCHOOL.whatsapp.replace(/[^0-9]/g, "") + "?text=" + waPengaduanText;
+      msgEl.innerHTML = `
+        <div class="form-msg success">
+          ${res.message}<br>
+          Nomor tiket Anda: <strong style="font-size:18px">${res.noTiket}</strong>
+          <div style="margin-top:12px">
+            <a href="${waPengaduanLink}" target="_blank" rel="noopener" class="btn btn-sm" style="background:#25D366;color:#fff;display:inline-flex;align-items:center;gap:6px">
+              💬 Simpan Bukti Tiket ke WhatsApp
+            </a>
+          </div>
+        </div>`;
       e.target.reset();
     } catch (err) { msgEl.innerHTML = `<div class="form-msg error">${err.message}</div>`; }
   });
@@ -492,5 +525,5 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Halaman awal: ikuti alamat di URL (default: beranda)
-  showPage(currentRoute());
+  handleRouteWithParams();
 });
