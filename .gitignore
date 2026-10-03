@@ -1,7 +1,10 @@
-# Clasp credential and local settings
+# Google Apps Script & Clasp backend
+backend/
+.clasp.json
 .clasprc.json
 
-# OS files
+# OS generated files
 Thumbs.db
 Desktop.ini
 .DS_Store
+*.tmp
