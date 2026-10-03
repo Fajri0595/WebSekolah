@@ -14,7 +14,50 @@ const KATEGORI_KONTEN = [
 const STATUS_PPDB = ["Terkirim", "Sedang Diverifikasi", "Lolos Berkas", "Ditolak"];
 
 let session = { token: null, user: null };
-const cache = { konten: [], guru: [], guruPublik: [], periode: [], ppdb: [], pengaduan: [] };
+const cache = { konten: [], guru: [], guruPublik: [], galeri: [], periode: [], ppdb: [], pengaduan: [] };
+
+// ---------- CACHE SESI PORTAL (stale-while-revalidate, hanya di memori) ----------
+// Sengaja TIDAK memakai localStorage di sini (beda dari situs publik) karena
+// panel ini memuat data pribadi (berkas PPDB, pengaduan) yang sebaiknya tidak
+// tertinggal di penyimpanan browser setelah admin logout/tutup tab. Cache
+// hidup selama sesi berjalan saja: begitu pernah dibuka sekali, berpindah
+// kembali ke tab itu terasa instan, lalu diam-diam diperbarui di latar
+// belakang kalau datanya memang berubah.
+const portalCache = {};
+async function cachedAuthPost(key, action, payload, onFresh) {
+  if (portalCache[key] !== undefined) {
+    const prev = portalCache[key];
+    // Sudah ada cache -> kembalikan SEKETIKA, revalidate diam-diam di latar
+    // belakang, dan hanya panggil onFresh jika datanya memang berubah.
+    authPost(action, payload).then(fresh => {
+      const changed = JSON.stringify(fresh) !== JSON.stringify(prev);
+      portalCache[key] = fresh;
+      if (changed && onFresh) onFresh(fresh);
+    }).catch(() => {});
+    return prev;
+  }
+  // Belum ada cache sama sekali -> ambil seperti biasa, tanpa memicu onFresh.
+  const fresh = await authPost(action, payload);
+  portalCache[key] = fresh;
+  return fresh;
+}
+async function cachedApiGet(key, action, params, onFresh) {
+  if (portalCache[key] !== undefined) {
+    const prev = portalCache[key];
+    Api.get(action, params).then(fresh => {
+      const changed = JSON.stringify(fresh) !== JSON.stringify(prev);
+      portalCache[key] = fresh;
+      if (changed && onFresh) onFresh(fresh);
+    }).catch(() => {});
+    return prev;
+  }
+  const fresh = await Api.get(action, params);
+  portalCache[key] = fresh;
+  return fresh;
+}
+// Dipanggil setelah aksi simpan/hapus supaya tampilan langsung benar seketika
+// (tidak menunggu siklus revalidate di latar belakang).
+function bustCache(...keys) { keys.forEach(k => delete portalCache[k]); }
 
 // ---------- UTIL ----------
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -106,6 +149,8 @@ async function doLogout(expired) {
   if (session.token && !expired) { try { await Api.post("logout", { token: session.token }); } catch (e) { /* abaikan */ } }
   localStorage.removeItem("sman_session");
   session = { token: null, user: null };
+  Object.keys(portalCache).forEach(k => delete portalCache[k]); // bersihkan cache data pribadi dari memori
+  _ppdbActiveId = null; _pengaduanActiveId = null;
   $("#dashboard-screen").classList.add("hidden");
   $("#login-screen").classList.remove("hidden");
   if (!expired) history.replaceState(null, "", location.pathname + location.search); // logout manual: bersihkan alamat halaman
@@ -162,11 +207,12 @@ function barChart(items, goldLast) {
 
 async function renderDashboard() {
   const statsEl = $("#dash-stats"), chartsEl = $("#dash-charts");
-  statsEl.innerHTML = loading; chartsEl.innerHTML = "";
+  const cacheKey = isAdmin() ? "dashboardStats" : "dashboardMyContent";
+  if (portalCache[cacheKey] === undefined) { statsEl.innerHTML = loading; chartsEl.innerHTML = ""; }
   $("#dash-title").textContent = isAdmin() ? "Dashboard Administrator" : "Dashboard Guru";
   try {
     if (isAdmin()) {
-      const s = await authPost("getDashboardStats");
+      const s = await cachedAuthPost(cacheKey, "getDashboardStats", {}, () => renderDashboard());
       statsEl.innerHTML = [
         ["Total Pendaftar PPDB", s.totalPendaftar], ["Lolos Berkas", s.lolosBerkas],
         ["Konten Published", s.kontenPublished], ["Pengaduan Baru", s.pengaduanBaru]
@@ -176,7 +222,7 @@ async function renderDashboard() {
         <div class="card"><h3>Pendaftar PPDB — 7 Hari Terakhir</h3>${barChart(s.trenPendaftar.map(t => ({ label: t.tanggal, value: t.jumlah })), true)}</div>
         <div class="card"><h3>Konten Published per Kategori</h3>${kategori.length ? barChart(kategori) : `<p class="muted">Belum ada konten published.</p>`}</div>`;
     } else {
-      const items = await authPost("getMyContent");
+      const items = await cachedAuthPost(cacheKey, "getMyContent", {}, () => renderDashboard());
       const pub = items.filter(i => i.Status === "Publish").length;
       statsEl.innerHTML = [["Total Konten Saya", items.length], ["Published", pub], ["Draft", items.length - pub], ["Hak Khusus", session.user.hakKhusus || "—"]]
         .map(([l, v]) => `<div class="card stat-card"><span class="muted">${l}</span><h3 style="font-size:${String(v).length > 6 ? 16 : 30}px">${esc(v)}</h3></div>`).join("");
@@ -188,9 +234,10 @@ async function renderDashboard() {
 // KONTEN (Guru & Admin)
 // ============================================================
 async function renderKonten() {
-  const el = $("#konten-list"); el.innerHTML = loading;
+  const el = $("#konten-list");
+  if (portalCache.myContent === undefined) el.innerHTML = loading;
   try {
-    cache.konten = await authPost("getMyContent");
+    cache.konten = await cachedAuthPost("myContent", "getMyContent", {}, () => renderKonten());
     el.innerHTML = cache.konten.length ? `
       <table><thead><tr><th>Judul</th><th>Kategori</th><th>Tanggal</th><th>Status</th><th></th></tr></thead><tbody>
       ${cache.konten.map(k => `<tr>
@@ -236,6 +283,7 @@ function openKontenModal(id) {
       const gambarFile = document.getElementById("konten-gambar-file").files[0];
       if (gambarFile) d.file = await fileToBase64(gambarFile);
       await authPost("saveContent", { id: k ? k.ID : undefined, ...d });
+      bustCache("myContent", "dashboardStats", "dashboardMyContent");
       closeModal(); renderKonten();
     } catch (err) { toast($("#modal-msg"), "error", err.message); }
     btn.disabled = false; btn.textContent = "Simpan";
@@ -244,24 +292,56 @@ function openKontenModal(id) {
 
 async function hapusKonten(id) {
   if (!confirm("Hapus konten ini secara permanen?")) return;
-  try { await authPost("deleteContent", { id }); renderKonten(); } catch (err) { alert(err.message); }
+  try { await authPost("deleteContent", { id }); bustCache("myContent", "dashboardStats", "dashboardMyContent"); renderKonten(); } catch (err) { alert(err.message); }
 }
 
 // ============================================================
 // GALERI (Guru berhak khusus / Admin)
 // ============================================================
 async function renderGaleriAdmin() {
-  const el = $("#galeri-list"); el.innerHTML = loading;
+  const el = $("#galeri-list");
+  if (portalCache.galeriAdmin === undefined) el.innerHTML = loading;
   try {
-    const items = [...await Api.get("galeri", { tipe: "foto" }), ...await Api.get("galeri", { tipe: "video" })];
-    el.innerHTML = items.length ? `<div class="grid grid-4">${items.map(i => `
+    cache.galeri = await cachedApiGet("galeriAdmin", "galeri", {}, () => renderGaleriAdmin());
+    el.innerHTML = cache.galeri.length ? `<div class="grid grid-4">${cache.galeri.map(i => `
       <div class="card gallery-admin-item">
         ${i.Tipe === "foto" ? `<img class="thumb" src="${esc(driveImg(i.URL))}" alt="">` : `<div class="thumb" style="display:flex;align-items:center;justify-content:center">🎬 Video</div>`}
         <p style="margin:8px 0 2px">${esc(i.Caption)}</p>
         <p class="muted">${esc(i.Kategori || "")} • ${formatTanggal(i.Tanggal)}</p>
-        <button class="btn btn-danger btn-sm" onclick="hapusGaleri('${esc(i.ID)}')">Hapus</button>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="btn btn-outline btn-sm" onclick="openGaleriEditModal('${esc(i.ID)}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="hapusGaleri('${esc(i.ID)}')">Hapus</button>
+        </div>
       </div>`).join("")}</div>` : `<div class="loading">Galeri masih kosong.</div>`;
   } catch (err) { el.innerHTML = `<div class="form-msg error">${esc(err.message)}</div>`; }
+}
+
+function openGaleriEditModal(id) {
+  const item = (cache.galeri || []).find(x => String(x.ID) === String(id));
+  if (!item) return;
+  openModal(`
+    <h2>Edit Item Galeri</h2>
+    <form id="galeri-edit-form">
+      <div class="field"><label class="required">Caption</label><input name="caption" required value="${esc(item.Caption)}"></div>
+      <div class="field"><label>Kategori</label><input name="kategori" value="${esc(item.Kategori || "")}" placeholder="Akademik, Upacara, ..."></div>
+      <div class="field"><label>Ganti Berkas (opsional)</label><input type="file" id="galeri-edit-file" accept="${item.Tipe === "video" ? "video/*" : "image/*"}">
+        <p class="muted" style="margin-top:6px">Kosongkan untuk tetap memakai berkas ${item.Tipe === "video" ? "video" : "foto"} yang sudah ada.</p></div>
+      <div id="modal-msg"></div>
+      <div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal()">Batal</button><button class="btn btn-primary" type="submit">Simpan</button></div>
+    </form>`);
+  $("#galeri-edit-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Menyimpan...";
+    try {
+      const file = document.getElementById("galeri-edit-file").files[0];
+      if (file) d.file = await fileToBase64(file);
+      await authPost("editGaleriGuru", { id, ...d });
+      bustCache("galeriAdmin");
+      closeModal(); renderGaleriAdmin();
+    } catch (err) { toast($("#modal-msg"), "error", err.message); }
+    btn.disabled = false; btn.textContent = "Simpan";
+  });
 }
 
 $("#galeri-form").addEventListener("submit", async e => {
@@ -273,6 +353,7 @@ $("#galeri-form").addEventListener("submit", async e => {
   const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Mengunggah...";
   try {
     const res = await authPost("uploadGaleriGuru", { ...d, file: await fileToBase64(file) });
+    bustCache("galeriAdmin");
     toast(msg, "success", res.message); e.target.reset(); renderGaleriAdmin();
   } catch (err) { toast(msg, "error", err.message); }
   btn.disabled = false; btn.textContent = "Unggah ke Galeri";
@@ -280,17 +361,19 @@ $("#galeri-form").addEventListener("submit", async e => {
 
 async function hapusGaleri(id) {
   if (!confirm("Hapus item galeri ini?")) return;
-  try { await authPost("deleteGaleriGuru", { id }); renderGaleriAdmin(); } catch (err) { alert(err.message); }
+  try { await authPost("deleteGaleriGuru", { id }); bustCache("galeriAdmin"); renderGaleriAdmin(); } catch (err) { alert(err.message); }
 }
 
 // ============================================================
 // VERIFIKASI PPDB (Guru berhak khusus / Admin)
 // ============================================================
+let _ppdbActiveId = null;
 async function renderVerifikasi() {
-  const el = $("#ppdb-list"); el.innerHTML = loading;
+  const el = $("#ppdb-list");
+  if (portalCache.ppdbAntrean === undefined) el.innerHTML = loading;
   try {
-    cache.ppdb = await authPost("getPPDBAntrean");
-    drawPpdbList();
+    cache.ppdb = await cachedAuthPost("ppdbAntrean", "getPPDBAntrean", {}, () => drawPpdbList(_ppdbActiveId));
+    drawPpdbList(_ppdbActiveId);
   } catch (err) { el.innerHTML = `<div class="form-msg error">${esc(err.message)}</div>`; }
 }
 $("#ppdb-search").addEventListener("input", () => drawPpdbList());
@@ -310,6 +393,7 @@ function safeLink(url) { return /^https:\/\//.test(url || "") ? esc(url) : "#"; 
 
 function showPpdbDetail(id) {
   const p = cache.ppdb.find(x => String(x.ID) === String(id)); if (!p) return;
+  _ppdbActiveId = id;
   drawPpdbList(id);
   const docs = [["Formulir", p.DokumenUmumURL], ["KTP Orang Tua", p.KTPOrtuURL], ["Kartu Keluarga", p.KKURL], ["Dokumen Pendukung", p.DokumenLainURL]]
     .filter(([, u]) => u).map(([n, u]) => `<a class="btn btn-outline btn-sm" href="${safeLink(u)}" target="_blank" rel="noopener">📄 ${n}</a>`).join("");
@@ -340,7 +424,8 @@ async function simpanStatusPpdb(id) {
   try {
     const res = await authPost("updateStatusPPDB", { id, status: $("#ppdb-status").value, catatan: $("#ppdb-catatan").value });
     toast($("#ppdb-msg"), "success", res.message);
-    cache.ppdb = await authPost("getPPDBAntrean"); drawPpdbList(id);
+    bustCache("ppdbAntrean");
+    cache.ppdb = await authPost("getPPDBAntrean"); portalCache.ppdbAntrean = cache.ppdb; drawPpdbList(id);
   } catch (err) { toast($("#ppdb-msg"), "error", err.message); }
 }
 
@@ -348,9 +433,11 @@ async function simpanStatusPpdb(id) {
 // DIREKTORI GURU & TENAGA KEPENDIDIKAN PUBLIK (Admin)
 // ============================================================
 async function renderGuruPublik() {
-  const el = $("#guru-publik-list"); el.innerHTML = loading;
+  const el = $("#guru-publik-list");
+  if (portalCache.guruPublikList === undefined) el.innerHTML = loading;
   try {
-    cache.guruPublik = (await Api.get("guru")).sort((a, b) => (a.Urutan || 999) - (b.Urutan || 999));
+    const fresh = await cachedApiGet("guruPublikList", "guru", {}, () => renderGuruPublik());
+    cache.guruPublik = [...fresh].sort((a, b) => (a.Urutan || 999) - (b.Urutan || 999));
     el.innerHTML = cache.guruPublik.length ? `<table><thead><tr><th></th><th>Nama</th><th>NIP</th><th>Jabatan</th><th>Bidang Studi</th><th>Urutan</th><th></th></tr></thead><tbody>
       ${cache.guruPublik.map(g => `<tr>
         <td>${g.FotoURL ? `<img src="${esc(driveImg(g.FotoURL))}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">` : "—"}</td>
@@ -388,6 +475,7 @@ function openGuruPublikModal(id) {
       const foto = document.getElementById("guru-publik-foto").files[0];
       if (foto) d.file = await fileToBase64(foto);
       await authPost("saveGuruPublik", { id: g ? g.ID : undefined, ...d });
+      bustCache("guruPublikList");
       closeModal(); renderGuruPublik();
     } catch (err) { toast($("#modal-msg"), "error", err.message); }
     btn.disabled = false; btn.textContent = "Simpan";
@@ -396,16 +484,17 @@ function openGuruPublikModal(id) {
 
 async function hapusGuruPublik(id) {
   if (!confirm("Hapus data ini dari direktori publik?")) return;
-  try { await authPost("deleteGuruPublik", { id }); renderGuruPublik(); } catch (err) { alert(err.message); }
+  try { await authPost("deleteGuruPublik", { id }); bustCache("guruPublikList"); renderGuruPublik(); } catch (err) { alert(err.message); }
 }
 
 // ============================================================
 // MANAJEMEN AKUN (Admin)
 // ============================================================
 async function renderGuru() {
-  const el = $("#guru-list"); el.innerHTML = loading;
+  const el = $("#guru-list");
+  if (portalCache.akunList === undefined) el.innerHTML = loading;
   try {
-    cache.guru = await authPost("listGuru");
+    cache.guru = await cachedAuthPost("akunList", "listGuru", {}, () => renderGuru());
     el.innerHTML = `<table><thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Hak Khusus</th><th>Status</th><th></th></tr></thead><tbody>
       ${cache.guru.map(u => `<tr>
         <td>${esc(u.Nama)}</td><td>${esc(u.Email)}</td><td>${esc(u.Role)}</td><td>${esc(u.HakKhusus || "—")}</td>
@@ -445,23 +534,24 @@ function openGuruModal(id) {
     const fd = new FormData(e.target);
     const d = Object.fromEntries(fd);
     d.hakKhusus = fd.getAll("hak").join(","); delete d.hak;
-    try { await authPost("saveGuru", { id: u ? u.ID : undefined, ...d }); closeModal(); renderGuru(); }
+    try { await authPost("saveGuru", { id: u ? u.ID : undefined, ...d }); bustCache("akunList"); closeModal(); renderGuru(); }
     catch (err) { toast($("#modal-msg"), "error", err.message); }
   });
 }
 
 async function nonaktifkanGuru(id) {
   if (!confirm("Nonaktifkan akun ini? Pengguna tidak akan bisa login lagi.")) return;
-  try { await authPost("deleteGuru", { id }); renderGuru(); } catch (err) { alert(err.message); }
+  try { await authPost("deleteGuru", { id }); bustCache("akunList"); renderGuru(); } catch (err) { alert(err.message); }
 }
 
 // ============================================================
 // PERIODE PPDB (Admin)
 // ============================================================
 async function renderPeriode() {
-  const el = $("#periode-list"); el.innerHTML = loading;
+  const el = $("#periode-list");
+  if (portalCache.periodeList === undefined) el.innerHTML = loading;
   try {
-    cache.periode = await authPost("listAllPeriode");
+    cache.periode = await cachedAuthPost("periodeList", "listAllPeriode", {}, () => renderPeriode());
     el.innerHTML = `<table><thead><tr><th>Tahun Ajaran</th><th>Buka</th><th>Tutup</th><th>Kuota</th><th>Status</th><th></th></tr></thead><tbody>
       ${cache.periode.map(p => `<tr><td>${esc(p.TahunAjaran)}</td><td>${formatTanggal(p.TanggalBuka)}</td><td>${formatTanggal(p.TanggalTutup)}</td>
         <td>${esc(p.Kuota)}</td><td><span class="badge ${badgeFor(p.Status)}">${esc(p.Status)}</span></td>
@@ -488,7 +578,7 @@ function openPeriodeModal(id) {
     </form>`);
   $("#periode-form").addEventListener("submit", async e => {
     e.preventDefault();
-    try { await authPost("savePeriode", { id: p ? p.ID : undefined, ...Object.fromEntries(new FormData(e.target)) }); closeModal(); renderPeriode(); }
+    try { await authPost("savePeriode", { id: p ? p.ID : undefined, ...Object.fromEntries(new FormData(e.target)) }); bustCache("periodeList"); closeModal(); renderPeriode(); }
     catch (err) { toast($("#modal-msg"), "error", err.message); }
   });
 }
@@ -497,9 +587,10 @@ function openPeriodeModal(id) {
 // DOKUMEN PUBLIK (Admin)
 // ============================================================
 async function renderDokumenAdmin() {
-  const el = $("#dokumen-list"); el.innerHTML = loading;
+  const el = $("#dokumen-list");
+  if (portalCache.dokumenList === undefined) el.innerHTML = loading;
   try {
-    const items = await Api.get("dokumen");
+    const items = await cachedApiGet("dokumenList", "dokumen", {}, () => renderDokumenAdmin());
     el.innerHTML = items.length ? `<table><thead><tr><th>Nama</th><th>Kategori</th><th>Tanggal</th><th></th></tr></thead><tbody>
       ${items.map(d => `<tr><td>${esc(d.NamaDokumen)}<br><span class="muted">${esc(d.Deskripsi || "")}</span></td><td>${esc(d.Kategori)}</td><td>${formatTanggal(d.Tanggal)}</td>
         <td style="white-space:nowrap"><a class="btn btn-outline btn-sm" href="${safeLink(d.FileURL)}" target="_blank" rel="noopener">Buka</a>
@@ -516,6 +607,7 @@ $("#dokumen-form").addEventListener("submit", async e => {
   const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Mengunggah...";
   try {
     const res = await authPost("saveDokumenAdmin", { ...Object.fromEntries(new FormData(e.target)), file: await fileToBase64(file) });
+    bustCache("dokumenList");
     toast(msg, "success", res.message); e.target.reset(); renderDokumenAdmin();
   } catch (err) { toast(msg, "error", err.message); }
   btn.disabled = false; btn.textContent = "Simpan & Publikasikan";
@@ -523,16 +615,17 @@ $("#dokumen-form").addEventListener("submit", async e => {
 
 async function hapusDokumen(id) {
   if (!confirm("Hapus dokumen ini dari daftar publik?")) return;
-  try { await authPost("deleteDokumenAdmin", { id }); renderDokumenAdmin(); } catch (err) { alert(err.message); }
+  try { await authPost("deleteDokumenAdmin", { id }); bustCache("dokumenList"); renderDokumenAdmin(); } catch (err) { alert(err.message); }
 }
 
 // ============================================================
 // MODERASI ALUMNI (Admin)
 // ============================================================
 async function renderAlumni() {
-  const el = $("#alumni-list"); el.innerHTML = loading;
+  const el = $("#alumni-list");
+  if (portalCache.alumniPending === undefined) el.innerHTML = loading;
   try {
-    const items = await authPost("listAlumniPending");
+    const items = await cachedAuthPost("alumniPending", "listAlumniPending", {}, () => renderAlumni());
     el.innerHTML = items.length ? `<table><thead><tr><th>Nama</th><th>Angkatan</th><th>Kontak</th><th>Pekerjaan</th><th>Pesan</th><th></th></tr></thead><tbody>
       ${items.map(a => `<tr><td>${esc(a.Nama)}</td><td>${esc(a.TahunLulus)}</td><td>${esc(a.Kontak)}</td><td>${esc(a.Pekerjaan)}</td><td>${esc(a.Pesan)}</td>
         <td style="white-space:nowrap"><button class="btn btn-primary btn-sm" onclick="moderasiAlumni('${esc(a.ID)}',true)">Setujui</button>
@@ -541,17 +634,19 @@ async function renderAlumni() {
   } catch (err) { el.innerHTML = `<div class="form-msg error">${esc(err.message)}</div>`; }
 }
 async function moderasiAlumni(id, approve) {
-  try { await authPost("moderateAlumni", { id, approve }); renderAlumni(); } catch (err) { alert(err.message); }
+  try { await authPost("moderateAlumni", { id, approve }); bustCache("alumniPending"); renderAlumni(); } catch (err) { alert(err.message); }
 }
 
 // ============================================================
 // LAYANAN PENGADUAN (Admin)
 // ============================================================
+let _pengaduanActiveId = null;
 async function renderPengaduan() {
-  const el = $("#pengaduan-list"); el.innerHTML = loading;
+  const el = $("#pengaduan-list");
+  if (portalCache.pengaduanList === undefined) el.innerHTML = loading;
   try {
-    cache.pengaduan = await authPost("listPengaduanAdmin");
-    drawPengaduanList();
+    cache.pengaduan = await cachedAuthPost("pengaduanList", "listPengaduanAdmin", {}, () => drawPengaduanList(_pengaduanActiveId));
+    drawPengaduanList(_pengaduanActiveId);
   } catch (err) { el.innerHTML = `<div class="form-msg error">${esc(err.message)}</div>`; }
 }
 function drawPengaduanList(activeId) {
@@ -564,6 +659,7 @@ function drawPengaduanList(activeId) {
 }
 function showPengaduan(id) {
   const p = cache.pengaduan.find(x => String(x.ID) === String(id)); if (!p) return;
+  _pengaduanActiveId = id;
   drawPengaduanList(id);
   $("#pengaduan-detail").innerHTML = `
     <div class="card">
@@ -584,7 +680,8 @@ async function simpanBalasan(id) {
   try {
     const res = await authPost("replyPengaduan", { id, status: $("#pgd-status").value, balasan: $("#pgd-balasan").value });
     toast($("#pgd-msg"), "success", res.message);
-    cache.pengaduan = await authPost("listPengaduanAdmin"); drawPengaduanList(id);
+    bustCache("pengaduanList");
+    cache.pengaduan = await authPost("listPengaduanAdmin"); portalCache.pengaduanList = cache.pengaduan; drawPengaduanList(id);
   } catch (err) { toast($("#pgd-msg"), "error", err.message); }
 }
 

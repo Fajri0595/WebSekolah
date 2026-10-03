@@ -121,12 +121,19 @@ const ClientCache = {
  */
 async function cachedGet(cacheKey, action, params, onUpdate) {
   const cached = ClientCache.read(cacheKey);
-  const revalidate = () => Api.get(action, params).then(fresh => {
-    const changed = JSON.stringify(fresh) !== JSON.stringify(ClientCache.read(cacheKey));
-    ClientCache.write(cacheKey, fresh);
-    if (changed && onUpdate) onUpdate(fresh);
-    return fresh;
-  });
-  if (cached) { revalidate().catch(() => {}); return cached; }
-  return revalidate();
+  if (cached) {
+    // Sudah ada cache -> kembalikan SEKETIKA, lalu diam-diam periksa versi
+    // terbaru di latar belakang dan panggil onUpdate HANYA jika memang berubah.
+    Api.get(action, params).then(fresh => {
+      const changed = JSON.stringify(fresh) !== JSON.stringify(cached);
+      ClientCache.write(cacheKey, fresh);
+      if (changed && onUpdate) onUpdate(fresh);
+    }).catch(() => {});
+    return cached;
+  }
+  // Belum ada cache sama sekali (pertama kali) -> ambil seperti biasa, tanpa
+  // memicu onUpdate (tidak ada tampilan basi yang perlu dikoreksi).
+  const fresh = await Api.get(action, params);
+  ClientCache.write(cacheKey, fresh);
+  return fresh;
 }

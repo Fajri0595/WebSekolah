@@ -226,11 +226,13 @@ async function renderGuru() {
   try {
     const list = await ensureGuruAll();
     c.innerHTML = list.length ? list.map(g => `
-      <div class="card text-center">
-        <img src="${esc(driveImg(g.FotoURL))}" style="width:88px;height:88px;border-radius:50%;object-fit:cover;margin:0 auto 12px;border:2px solid var(--gold)">
-        <h3 style="font-size:16px">${esc(g.Nama)}</h3>
-        <p class="muted">NIP. ${esc(g.NIP || '-')}</p>
-        <p style="color:var(--navy);font-weight:600">${esc(g.Jabatan)}</p>
+      <div class="card guru-card">
+        <div class="guru-photo">
+          ${g.FotoURL ? `<img src="${esc(driveImg(g.FotoURL))}" alt="${esc(g.Nama)}">` : `<div class="guru-photo-placeholder">👤</div>`}
+        </div>
+        <h3 class="guru-name">${esc(g.Nama)}</h3>
+        <p class="guru-meta">NIP. ${esc(g.NIP || '-')}</p>
+        <p class="guru-jabatan">${esc(g.Jabatan)}</p>
         <span class="pill">${esc(g.BidangStudi || '-')}</span>
       </div>`).join("") : emptyHtml();
   } catch (e) { c.innerHTML = emptyHtml("Gagal memuat data guru."); }
