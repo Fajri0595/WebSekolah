@@ -88,21 +88,29 @@ async function authPost(action, payload = {}) {
   }
 }
 
-// ---------- EDITOR TEKS KAYA (Bold, Miring, Garis Bawah, Daftar) ----------
-// Memakai contenteditable + document.execCommand: sederhana, tanpa pustaka
-// tambahan, dan hasilnya adalah HTML yang sama seperti yang dipakai backend.
+// ---------- EDITOR TEKS KAYA (Bold, Miring, Garis Bawah, Daftar, Link, Quote) ----------
 function richEditorHtml(editorId, initialHtml) {
   return `
     <div class="rich-toolbar" data-target="${editorId}">
-      <button type="button" data-cmd="bold" title="Tebal"><b>B</b></button>
-      <button type="button" data-cmd="italic" title="Miring"><i>I</i></button>
-      <button type="button" data-cmd="underline" title="Garis bawah"><u>U</u></button>
+      <button type="button" data-cmd="bold" title="Tebal (Ctrl+B)"><b>B</b></button>
+      <button type="button" data-cmd="italic" title="Miring (Ctrl+I)"><i>I</i></button>
+      <button type="button" data-cmd="underline" title="Garis bawah (Ctrl+U)"><u>U</u></button>
+      <button type="button" data-cmd="strikeThrough" title="Coret"><s>S</s></button>
+      <span class="rich-sep"></span>
+      <button type="button" data-cmd="formatBlock" data-val="H3" title="Sub-judul (H3)">H3</button>
+      <button type="button" data-cmd="formatBlock" data-val="H4" title="Sub-sub-judul (H4)">H4</button>
+      <button type="button" data-cmd="formatBlock" data-val="P" title="Paragraf Normal">P</button>
+      <button type="button" data-cmd="formatBlock" data-val="BLOCKQUOTE" title="Kutipan (Quote)">❝❞</button>
       <span class="rich-sep"></span>
       <button type="button" data-cmd="insertUnorderedList" title="Daftar bertitik">• List</button>
       <button type="button" data-cmd="insertOrderedList" title="Daftar bernomor">1. List</button>
       <span class="rich-sep"></span>
-      <button type="button" data-cmd="formatBlock" data-val="H3" title="Sub-judul">H3</button>
-      <button type="button" data-cmd="formatBlock" data-val="P" title="Paragraf normal">P</button>
+      <button type="button" data-action="link" title="Sisipkan Tautan">🔗 Link</button>
+      <button type="button" data-cmd="unlink" title="Hapus Tautan">🔗✕</button>
+      <span class="rich-sep"></span>
+      <button type="button" data-cmd="undo" title="Urungkan (Undo)">↺</button>
+      <button type="button" data-cmd="redo" title="Ulangi (Redo)">↻</button>
+      <button type="button" data-cmd="removeFormat" title="Hapus Format">🧹</button>
     </div>
     <div class="rich-editor" id="${editorId}" contenteditable="true">${initialHtml || ""}</div>`;
 }
@@ -112,6 +120,13 @@ function bindRichEditor(editorId) {
   toolbar.querySelectorAll("button").forEach(btn => {
     btn.addEventListener("click", () => {
       editor.focus();
+      if (btn.dataset.action === "link") {
+        const url = prompt("Masukkan URL tautan (contoh: https://...):", "https://");
+        if (url && url !== "https://") {
+          document.execCommand("createLink", false, url);
+        }
+        return;
+      }
       document.execCommand(btn.dataset.cmd, false, btn.dataset.val || undefined);
     });
   });
@@ -416,8 +431,129 @@ function showPpdbDetail(id) {
       <div class="field"><label>Catatan untuk pendaftar (tampil di Cek Status publik)</label>
         <textarea id="ppdb-catatan" maxlength="300">${esc(p.CatatanVerifikator || "")}</textarea></div>
       <div id="ppdb-msg"></div>
-      <button class="btn btn-primary" onclick="simpanStatusPpdb('${esc(p.ID)}')">Simpan Status</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" onclick="simpanStatusPpdb('${esc(p.ID)}')">Simpan Status</button>
+        <button type="button" class="btn btn-outline" onclick="cetakKartuPesertaAdmin('${esc(p.ID)}')">🖨️ Cetak Kartu Pendaftaran</button>
+      </div>
     </div>`;
+}
+
+function cetakKartuPesertaAdmin(id) {
+  const p = cache.ppdb.find(x => String(x.ID) === String(id));
+  if (!p) return;
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("Popup diblokir browser. Izinkan pop-up untuk mencetak kartu.");
+    return;
+  }
+  win.document.write(`<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Bukti Pendaftaran PPDB - ${esc(p.NoRegistrasi)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 18mm; }
+    body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; line-height: 1.4; margin: 0; padding: 20px; }
+    .header { text-align: center; border-bottom: 3px double #000; padding-bottom: 12px; margin-bottom: 20px; }
+    .header h2 { margin: 0; font-size: 16pt; text-transform: uppercase; }
+    .header h3 { margin: 4px 0 0; font-size: 14pt; }
+    .header p { margin: 4px 0 0; font-size: 10pt; font-family: Arial, sans-serif; }
+    .doc-title { text-align: center; font-size: 13pt; font-weight: bold; margin: 20px 0 16px; text-decoration: underline; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 10.5pt; }
+    table td { padding: 6px 8px; vertical-align: top; }
+    table td.label { width: 32%; font-weight: bold; }
+    table td.colon { width: 2%; }
+    .footer-box { margin-top: 30px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .ttd-box { width: 45%; text-align: center; font-family: Arial, sans-serif; font-size: 10.5pt; }
+    .ttd-space { height: 75px; }
+    .status-stamp { display: inline-block; padding: 4px 14px; border: 2px solid #1E3A8A; color: #1E3A8A; font-weight: bold; border-radius: 4px; font-family: Arial, sans-serif; text-transform: uppercase; }
+    .print-actions { margin-bottom: 20px; text-align: right; }
+    @media print { .print-actions { display: none; } body { padding: 0; } }
+    .btn-print { background: #1E3A8A; color: #fff; border: none; padding: 8px 18px; font-size: 12pt; border-radius: 6px; cursor: pointer; font-family: Arial, sans-serif; }
+  </style>
+</head>
+<body>
+  <div class="print-actions">
+    <button class="btn-print" onclick="window.print()">🖨️ Cetak / Simpan sebagai PDF</button>
+  </div>
+  <div class="header">
+    <h2>PEMERINTAH PROVINSI DAERAH KHUSUS IBUKOTA JAKARTA</h2>
+    <h3>DINAS PENDIDIKAN</h3>
+    <h2>${esc(SCHOOL.name).toUpperCase()}</h2>
+    <p>${esc(SCHOOL.address)} • Telp: ${esc(SCHOOL.phone)} • Email: ${esc(SCHOOL.email)}</p>
+  </div>
+
+  <div class="doc-title">LEMBAR ARSIP PENDAFTARAN PPDB</div>
+
+  <table>
+    <tr><td class="label">Nomor Registrasi</td><td class="colon">:</td><td><strong style="font-size:12pt;letter-spacing:1px">${esc(p.NoRegistrasi)}</strong></td></tr>
+    <tr><td class="label">Nama Lengkap Siswa</td><td class="colon">:</td><td><strong>${esc(p.NamaSiswa)}</strong></td></tr>
+    <tr><td class="label">Tempat, Tanggal Lahir</td><td class="colon">:</td><td>${esc(p.TempatTglLahir || "-")}</td></tr>
+    <tr><td class="label">Alamat Domisili</td><td class="colon">:</td><td>${esc(p.Alamat || "-")}</td></tr>
+    <tr><td class="label">Nomor HP Siswa</td><td class="colon">:</td><td>${esc(p.NoHP || "-")}</td></tr>
+    <tr><td class="label">Nama Orang Tua (Ayah / Ibu)</td><td class="colon">:</td><td>${esc((p.NamaAyah || "-") + " & " + (p.NamaIbu || "-"))}</td></tr>
+    <tr><td class="label">Pekerjaan Orang Tua</td><td class="colon">:</td><td>${esc(p.PekerjaanOrtu || "-")}</td></tr>
+    <tr><td class="label">Nomor HP Orang Tua</td><td class="colon">:</td><td>${esc(p.NoHPOrtu || "-")}</td></tr>
+    <tr><td class="label">Tanggal Registrasi</td><td class="colon">:</td><td>${formatTanggal(p.TanggalDaftar)}</td></tr>
+    <tr><td class="label">Status Verifikasi</td><td class="colon">:</td><td><span class="status-stamp">${esc(p.StatusVerifikasi || "Terkirim")}</span></td></tr>
+    ${p.CatatanVerifikator ? `<tr><td class="label">Catatan Panitia</td><td class="colon">:</td><td><em>${esc(p.CatatanVerifikator)}</em></td></tr>` : ""}
+  </table>
+
+  <div class="footer-box">
+    <div class="ttd-box">
+      <p>Calon Peserta Didik / Orang Tua,</p>
+      <div class="ttd-space"></div>
+      <p>( <strong>${esc(p.NamaSiswa)}</strong> )</p>
+    </div>
+    <div class="ttd-box">
+      <p>Panitia Verifikator PPDB,</p>
+      <div class="ttd-space"></div>
+      <p>( <strong>${esc(session.user ? session.user.Nama : "Panitia")}</strong> )</p>
+    </div>
+  </div>
+</body>
+</html>`);
+  win.document.close();
+}
+
+function exportPPDBToCSV() {
+  if (!cache.ppdb || !cache.ppdb.length) {
+    alert("Belum ada data pendaftar untuk diekspor.");
+    return;
+  }
+  const headers = [
+    "No Registrasi", "Nama Siswa", "Tempat Tgl Lahir", "Alamat", "No HP Siswa",
+    "Nama Ayah", "Nama Ibu", "Pekerjaan Ortu", "No HP Ortu", "Status Verifikasi",
+    "Catatan Verifikator", "Tanggal Daftar"
+  ];
+  const rows = cache.ppdb.map(p => [
+    p.NoRegistrasi,
+    p.NamaSiswa,
+    p.TempatTglLahir || "",
+    p.Alamat || "",
+    p.NoHP || "",
+    p.NamaAyah || "",
+    p.NamaIbu || "",
+    p.PekerjaanOrtu || "",
+    p.NoHPOrtu || "",
+    p.StatusVerifikasi || "",
+    p.CatatanVerifikator || "",
+    p.TanggalDaftar ? new Date(p.TanggalDaftar).toLocaleString("id-ID") : ""
+  ]);
+
+  const csvContent = "\uFEFF" + [headers, ...rows]
+    .map(r => r.map(field => `"${String(field || "").replace(/"/g, '""')}"`).join(","))
+    .join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Data_PPDB_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 async function simpanStatusPpdb(id) {

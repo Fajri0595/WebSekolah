@@ -403,16 +403,34 @@ async function ppdbSubmit(e) {
     const res = await Api.post("daftarPPDB", { ...ppdbData, files: { dokumenUmum, ktpOrtu, kk, dokumenLain } });
     const waText = encodeURIComponent("Halo Panitia PPDB " + SCHOOL.name + ", saya telah mendaftar PPDB Online.\\n\\nNama Siswa: " + ppdbData.namaSiswa + "\\nNo. Registrasi: " + res.noRegistrasi + "\\n\\nMohon info verifikasi berkas selanjutnya. Terima kasih!");
     const waLink = "https://wa.me/" + SCHOOL.whatsapp.replace(/[^0-9]/g, "") + "?text=" + waText;
+    const dataStr = encodeURIComponent(JSON.stringify({
+      noRegistrasi: res.noRegistrasi,
+      namaSiswa: ppdbData.namaSiswa,
+      tempatTglLahir: ppdbData.tempatTglLahir || "-",
+      alamat: ppdbData.alamat || "-",
+      noHp: ppdbData.noHp || "-",
+      namaAyah: ppdbData.namaAyah || "-",
+      namaIbu: ppdbData.namaIbu || "-",
+      pekerjaanOrtu: ppdbData.pekerjaanOrtu || "-",
+      noHpOrtu: ppdbData.noHpOrtu || "-",
+      tanggalDaftar: new Date().toISOString(),
+      statusVerifikasi: "Terkirim",
+      catatanVerifikator: ""
+    }));
+
     document.getElementById("ppdb-step-3").innerHTML = `
       <div class="form-msg success">
         <h3 style="margin:0 0 8px">${res.message}</h3>
         <p>Nomor Registrasi Anda: <strong style="font-size:20px;color:#1E3A5F">${esc(res.noRegistrasi)}</strong></p>
         <p>Simpan nomor ini untuk mengecek status verifikasi berkas Anda.</p>
         <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+          <button type="button" class="btn btn-primary" onclick="cetakBuktiPPDB(decodeURIComponent('${dataStr}'))">
+            🖨️ Cetak Bukti Pendaftaran
+          </button>
           <a href="${waLink}" target="_blank" rel="noopener" class="btn" style="background:#25D366;color:#fff;display:inline-flex;align-items:center;gap:6px">
             💬 Konfirmasi ke WhatsApp Panitia
           </a>
-          <a class="btn btn-primary" data-page="ppdb-status">Cek Status Sekarang</a>
+          <a class="btn btn-outline" data-page="ppdb-status">Cek Status Pendaftaran</a>
         </div>
       </div>`;
   } catch (err) {
@@ -442,14 +460,118 @@ async function ppdbCekStatus(e) {
     const data = await Api.get("ppdbCekStatus", { noRegistrasi, tanggalLahir });
     const badgeClass = data.StatusVerifikasi === "Lolos Berkas" ? "badge-success"
       : data.StatusVerifikasi === "Ditolak" ? "badge-danger" : "badge-warning";
+    const dataStr = encodeURIComponent(JSON.stringify(data));
     resultEl.innerHTML = `
       <div class="card">
         <h3>${esc(data.NamaSiswa)}</h3>
-        <p class="muted">${data.NoRegistrasi} • Terdaftar ${formatTanggal(data.TanggalDaftar)}</p>
+        <p class="muted">${esc(data.NoRegistrasi)} • Terdaftar ${formatTanggal(data.TanggalDaftar)}</p>
         <span class="badge ${badgeClass}">${esc(data.StatusVerifikasi)}</span>
         ${data.CatatanVerifikator ? `<p style="margin-top:12px"><strong>Catatan Verifikator:</strong> ${esc(data.CatatanVerifikator)}</p>` : ""}
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap">
+          <button type="button" class="btn btn-primary" onclick="cetakBuktiPPDB(decodeURIComponent('${dataStr}'))">
+            🖨️ Cetak Kartu / Bukti Pendaftaran
+          </button>
+        </div>
       </div>`;
   } catch (err) { resultEl.innerHTML = `<div class="form-msg error">${err.message}</div>`; }
+}
+
+function cetakBuktiPPDB(raw) {
+  const p = typeof raw === "string" ? JSON.parse(raw) : raw;
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("Popup diblokir oleh browser. Harap izinkan pop-up untuk mencetak bukti pendaftaran.");
+    return;
+  }
+  const tglDaftar = p.TanggalDaftar || p.tanggalDaftar;
+  const noReg = p.NoRegistrasi || p.noRegistrasi;
+  const nama = p.NamaSiswa || p.namaSiswa;
+  const ttl = p.TempatTglLahir || p.tempatTglLahir || "-";
+  const alamat = p.Alamat || p.alamat || "-";
+  const noHp = p.NoHP || p.noHp || "-";
+  const ortu = (p.NamaAyah || p.namaAyah || "-") + " & " + (p.NamaIbu || p.namaIbu || "-");
+  const pekerjaan = p.PekerjaanOrtu || p.pekerjaanOrtu || "-";
+  const status = p.StatusVerifikasi || p.statusVerifikasi || "Terkirim";
+  const catatan = p.CatatanVerifikator || p.catatanVerifikator || "-";
+
+  win.document.write(`<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Bukti Pendaftaran PPDB - ${esc(noReg)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 18mm; }
+    body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; line-height: 1.4; margin: 0; padding: 20px; }
+    .header { text-align: center; border-bottom: 3px double #000; padding-bottom: 12px; margin-bottom: 20px; position: relative; }
+    .header h2 { margin: 0; font-size: 16pt; text-transform: uppercase; letter-spacing: 1px; }
+    .header h3 { margin: 4px 0 0; font-size: 14pt; }
+    .header p { margin: 4px 0 0; font-size: 10pt; font-family: Arial, sans-serif; }
+    .doc-title { text-align: center; font-size: 13pt; font-weight: bold; margin: 20px 0 16px; text-decoration: underline; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 10.5pt; }
+    table td { padding: 6px 8px; vertical-align: top; }
+    table td.label { width: 32%; font-weight: bold; }
+    table td.colon { width: 2%; }
+    .table-bordered { border: 1px solid #000; margin-top: 10px; }
+    .table-bordered td, .table-bordered th { border: 1px solid #000; padding: 8px; }
+    .footer-box { margin-top: 30px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .ttd-box { width: 45%; text-align: center; font-family: Arial, sans-serif; font-size: 10.5pt; }
+    .ttd-space { height: 75px; }
+    .status-stamp { display: inline-block; padding: 4px 14px; border: 2px solid #1E3A8A; color: #1E3A8A; font-weight: bold; border-radius: 4px; font-family: Arial, sans-serif; text-transform: uppercase; font-size: 11pt; }
+    .print-actions { margin-bottom: 20px; text-align: right; }
+    @media print { .print-actions { display: none; } body { padding: 0; } }
+    .btn-print { background: #1E3A8A; color: #fff; border: none; padding: 8px 18px; font-size: 12pt; border-radius: 6px; cursor: pointer; font-family: Arial, sans-serif; }
+  </style>
+</head>
+<body>
+  <div class="print-actions">
+    <button class="btn-print" onclick="window.print()">🖨️ Cetak / Simpan sebagai PDF</button>
+  </div>
+  <div class="header">
+    <h2>PEMERINTAH PROVINSI DAERAH KHUSUS IBUKOTA JAKARTA</h2>
+    <h3>DINAS PENDIDIKAN</h3>
+    <h2>${esc(SCHOOL.name).toUpperCase()}</h2>
+    <p>${esc(SCHOOL.address)} • Telp: ${esc(SCHOOL.phone)} • Email: ${esc(SCHOOL.email)}</p>
+  </div>
+
+  <div class="doc-title">TANDA BUKTI PENDAFTARAN PPDB ONLINE</div>
+
+  <table>
+    <tr><td class="label">Nomor Registrasi</td><td class="colon">:</td><td><strong style="font-size:12pt;letter-spacing:1px">${esc(noReg)}</strong></td></tr>
+    <tr><td class="label">Nama Lengkap Siswa</td><td class="colon">:</td><td><strong>${esc(nama)}</strong></td></tr>
+    <tr><td class="label">Tempat, Tanggal Lahir</td><td class="colon">:</td><td>${esc(ttl)}</td></tr>
+    <tr><td class="label">Alamat Domisili</td><td class="colon">:</td><td>${esc(alamat)}</td></tr>
+    <tr><td class="label">Nomor HP Siswa</td><td class="colon">:</td><td>${esc(noHp)}</td></tr>
+    <tr><td class="label">Nama Orang Tua (Ayah / Ibu)</td><td class="colon">:</td><td>${esc(ortu)}</td></tr>
+    <tr><td class="label">Pekerjaan Orang Tua</td><td class="colon">:</td><td>${esc(pekerjaan)}</td></tr>
+    <tr><td class="label">Tanggal Registrasi</td><td class="colon">:</td><td>${formatTanggal(tglDaftar)}</td></tr>
+    <tr><td class="label">Status Verifikasi Saat Ini</td><td class="colon">:</td><td><span class="status-stamp">${esc(status)}</span></td></tr>
+    ${catatan && catatan !== "-" ? `<tr><td class="label">Catatan Panitia</td><td class="colon">:</td><td><em>${esc(catatan)}</em></td></tr>` : ""}
+  </table>
+
+  <div style="font-family:Arial,sans-serif;font-size:9.5pt;background:#f5f5f5;padding:10px;border-left:4px solid #1E3A8A;margin-top:16px">
+    <strong>Petunjuk Penting Bagi Pendaftar:</strong>
+    <ol style="margin:4px 0 0;padding-left:18px">
+      <li>Simpan lembar bukti pendaftaran ini dengan baik sebagai bukti resmi verifikasi.</li>
+      <li>Pantau pengumuman hasil seleksi berkas melalui menu <em>Cek Status Pendaftaran</em> di website sekolah.</li>
+      <li>Bawalah lembar bukti ini beserta berkas fisik asli pada saat jadwal verifikasi ulang/wawancara di sekolah.</li>
+    </ol>
+  </div>
+
+  <div class="footer-box">
+    <div class="ttd-box">
+      <p>Calon Peserta Didik / Orang Tua,</p>
+      <div class="ttd-space"></div>
+      <p>( <strong>${esc(nama)}</strong> )</p>
+    </div>
+    <div class="ttd-box">
+      <p>Panitia PPDB ${esc(SCHOOL.name)},</p>
+      <div class="ttd-space"></div>
+      <p>( <strong>Panitia Penerimaan</strong> )</p>
+    </div>
+  </div>
+</body>
+</html>`);
+  win.document.close();
 }
 
 // ---------- DOKUMEN ----------
