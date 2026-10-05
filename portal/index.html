@@ -50,6 +50,7 @@
     <button class="portal-nav-item" data-nav="dokumen" data-admin-only>Dokumen Publik</button>
     <button class="portal-nav-item" data-nav="alumni" data-admin-only>Moderasi Alumni</button>
     <button class="portal-nav-item" data-nav="pengaduan" data-admin-only>Layanan Pengaduan</button>
+    <button class="portal-nav-item" data-nav="pengaturan" data-admin-only>⚙ Pengaturan Website</button>
 
     <div style="margin-top:24px;border-top:1px solid var(--navy);padding-top:12px">
       <button class="portal-nav-item" id="btn-logout">⎋ Keluar</button>
@@ -92,7 +93,7 @@
               <div class="field"><label>Kategori</label><input name="kategori" placeholder="Akademik, Upacara, ..."></div>
             </div>
             <div class="field"><label class="required">Caption</label><input name="caption" required></div>
-            <div class="field"><label class="required">Berkas (foto ≤ 5MB)</label><input type="file" id="galeri-file" accept="image/*,video/*" required></div>
+            <div class="field"><label class="required">Berkas Media (Foto maks. 5MB, Video maks. 30MB)</label><input type="file" id="galeri-file" accept="image/*,video/*" required></div>
             <div id="galeri-msg"></div>
             <button class="btn btn-primary" type="submit">Unggah ke Galeri</button>
           </form>
@@ -178,6 +179,53 @@
         <div class="split">
           <div class="list-scroll" id="pengaduan-list"></div>
           <div id="pengaduan-detail"><div class="card muted">Pilih tiket di sebelah kiri.</div></div>
+        </div>
+      </section>
+
+      <!-- PENGATURAN WEBSITE (ADMIN) -->
+      <section class="portal-page" id="pp-pengaturan">
+        <div class="page-head">
+          <h1>Pengaturan Identitas & Kontak Website</h1>
+          <p class="muted">Ubah nama sekolah, kontak, nomor WhatsApp admin, alamat, dan konfigurasi website secara langsung tanpa mengubah source code.</p>
+        </div>
+        <div class="card" style="max-width:860px">
+          <form id="pengaturan-form">
+            <h3 style="margin-bottom:16px">Identitas Utama Sekolah</h3>
+            <div class="form-row">
+              <div class="field"><label class="required">Nama Resmi Sekolah</label><input name="namaSekolah" id="cfg-namaSekolah" required></div>
+              <div class="field"><label>Status Akreditasi</label><input name="akreditasi" id="cfg-akreditasi" placeholder="Contoh: Terakreditasi A (Unggul)"></div>
+            </div>
+            <div class="field"><label>Slogan Singkat</label><input name="slogan" id="cfg-slogan" placeholder="Contoh: Integritas • Prestasi • Kinerja"></div>
+            <div class="field"><label>Tagline / Visi di Banner Utama</label><textarea name="tagline" id="cfg-tagline" rows="2" placeholder="Teks visi atau moto di hero banner depan"></textarea></div>
+
+            <hr style="margin:24px 0;border:0;border-top:1px solid var(--border)">
+            <h3 style="margin-bottom:16px">Kontak & Alamat Sekolah</h3>
+            <div class="form-row">
+              <div class="field"><label class="required">Nomor WhatsApp Admin</label><input name="whatsapp" id="cfg-whatsapp" required placeholder="+62 811-xxxx-xxxx"></div>
+              <div class="field"><label>Nomor Telepon Kantor</label><input name="telepon" id="cfg-telepon" placeholder="(021) 7890-1234"></div>
+            </div>
+            <div class="form-row">
+              <div class="field"><label class="required">Email Resmi Sekolah</label><input name="email" id="cfg-email" type="email" required placeholder="info@sekolah.sch.id"></div>
+              <div class="field"><label>Jam Operasional</label><input name="jamOperasional" id="cfg-jamOperasional" placeholder="Senin - Jumat: 07.00 - 16.00 WIB"></div>
+            </div>
+            <div class="field"><label class="required">Alamat Lengkap Sekolah</label><textarea name="alamat" id="cfg-alamat" rows="2" required placeholder="Jalan, kelurahan, kecamatan, kota, kode pos"></textarea></div>
+
+            <hr style="margin:24px 0;border:0;border-top:1px solid var(--border)">
+            <h3 style="margin-bottom:16px">Pimpinan Sekolah & Media Sosial</h3>
+            <div class="form-row">
+              <div class="field"><label>Nama Kepala Sekolah</label><input name="namaKepsek" id="cfg-namaKepsek"></div>
+              <div class="field"><label>NIP Kepala Sekolah</label><input name="nipKepsek" id="cfg-nipKepsek"></div>
+            </div>
+            <div class="form-row">
+              <div class="field"><label>Tautan Instagram Resmi</label><input name="instagram" id="cfg-instagram" placeholder="https://instagram.com/..."></div>
+              <div class="field"><label>Tautan YouTube Resmi</label><input name="youtube" id="cfg-youtube" placeholder="https://youtube.com/..."></div>
+            </div>
+
+            <div id="pengaturan-msg"></div>
+            <div style="margin-top:20px">
+              <button class="btn btn-primary" type="submit" id="btn-save-pengaturan" style="padding:10px 24px;font-size:15px">💾 Simpan Semua Pengaturan</button>
+            </div>
+          </form>
         </div>
       </section>
 

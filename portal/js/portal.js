@@ -200,7 +200,7 @@ function navTo(page) {
   const loaders = {
     dashboard: renderDashboard, konten: renderKonten, galeri: renderGaleriAdmin, verifikasi: renderVerifikasi,
     "guru-publik": renderGuruPublik, akun: renderGuru, periode: renderPeriode, dokumen: renderDokumenAdmin,
-    alumni: renderAlumni, pengaduan: renderPengaduan
+    alumni: renderAlumni, pengaduan: renderPengaduan, pengaturan: renderPengaturanAdmin
   };
   if (loaders[page]) loaders[page]();
 }
@@ -350,7 +350,12 @@ function openGaleriEditModal(id) {
     const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Menyimpan...";
     try {
       const file = document.getElementById("galeri-edit-file").files[0];
-      if (file) d.file = await fileToBase64(file);
+      if (file) {
+        const isVideo = item.Tipe === "video" || file.type.startsWith("video/");
+        const maxMb = isVideo ? 30 : 5;
+        if (file.size > maxMb * 1024 * 1024) throw new Error(`Ukuran berkas ${isVideo ? "video" : "foto"} melebihi batas ${maxMb}MB.`);
+        d.file = await fileToBase64(file, maxMb);
+      }
       await authPost("editGaleriGuru", { id, ...d });
       bustCache("galeriAdmin");
       closeModal(); renderGaleriAdmin();
@@ -363,11 +368,15 @@ $("#galeri-form").addEventListener("submit", async e => {
   e.preventDefault();
   const msg = $("#galeri-msg"), file = $("#galeri-file").files[0];
   if (!file) return toast(msg, "error", "Pilih berkas terlebih dahulu.");
-  if (file.size > 5 * 1024 * 1024) return toast(msg, "error", "Ukuran berkas maksimal 5MB. Untuk video besar, unggah ke Drive lalu hubungi admin.");
   const d = Object.fromEntries(new FormData(e.target));
+  const isVideo = d.tipe === "video" || file.type.startsWith("video/");
+  const maxMb = isVideo ? 30 : 5;
+  if (file.size > maxMb * 1024 * 1024) {
+    return toast(msg, "error", `Ukuran berkas ${isVideo ? "video" : "foto"} melebihi batas maksimum ${maxMb}MB.`);
+  }
   const btn = e.target.querySelector("button[type=submit]"); btn.disabled = true; btn.textContent = "Mengunggah...";
   try {
-    const res = await authPost("uploadGaleriGuru", { ...d, file: await fileToBase64(file) });
+    const res = await authPost("uploadGaleriGuru", { ...d, file: await fileToBase64(file, maxMb) });
     bustCache("galeriAdmin");
     toast(msg, "success", res.message); e.target.reset(); renderGaleriAdmin();
   } catch (err) { toast(msg, "error", err.message); }
@@ -729,7 +738,7 @@ async function renderDokumenAdmin() {
     const items = await cachedApiGet("dokumenList", "dokumen", {}, () => renderDokumenAdmin());
     el.innerHTML = items.length ? `<table><thead><tr><th>Nama</th><th>Kategori</th><th>Tanggal</th><th></th></tr></thead><tbody>
       ${items.map(d => `<tr><td>${esc(d.NamaDokumen)}<br><span class="muted">${esc(d.Deskripsi || "")}</span></td><td>${esc(d.Kategori)}</td><td>${formatTanggal(d.Tanggal)}</td>
-        <td style="white-space:nowrap"><a class="btn btn-outline btn-sm" href="${safeLink(d.FileURL)}" target="_blank" rel="noopener">Buka</a>
+        <td style="white-space:nowrap"><a class="btn btn-outline btn-sm" href="${safeLink(driveDownloadUrl(d.FileURL))}" download="${esc(d.NamaDokumen)}" target="_blank" rel="noopener">Unduh</a>
         <button class="btn btn-danger btn-sm" onclick="hapusDokumen('${esc(d.ID)}')">Hapus</button></td></tr>`).join("")}</tbody></table>`
       : `<div class="loading">Belum ada dokumen.</div>`;
   } catch (err) { el.innerHTML = `<div class="form-msg error">${esc(err.message)}</div>`; }
@@ -819,6 +828,49 @@ async function simpanBalasan(id) {
     bustCache("pengaduanList");
     cache.pengaduan = await authPost("listPengaduanAdmin"); portalCache.pengaduanList = cache.pengaduan; drawPengaduanList(id);
   } catch (err) { toast($("#pgd-msg"), "error", err.message); }
+}
+
+// ============================================================
+// PENGATURAN WEBSITE (Admin)
+// ============================================================
+async function renderPengaturanAdmin() {
+  const msg = $("#pengaturan-msg");
+  if (msg) msg.innerHTML = "";
+  try {
+    const data = await cachedApiGet("pengaturanAdmin", "pengaturan", {}, () => renderPengaturanAdmin());
+    if (!data) return;
+    const fields = ["namaSekolah", "akreditasi", "slogan", "tagline", "whatsapp", "telepon", "email", "jamOperasional", "alamat", "namaKepsek", "nipKepsek", "instagram", "youtube"];
+    fields.forEach(f => {
+      const el = $("#cfg-" + f);
+      if (el && data[f] !== undefined) el.value = data[f];
+    });
+  } catch (err) {
+    if (msg) toast(msg, "error", "Gagal memuat pengaturan: " + err.message);
+  }
+}
+
+const formPengaturan = $("#pengaturan-form");
+if (formPengaturan) {
+  formPengaturan.addEventListener("submit", async e => {
+    e.preventDefault();
+    const msg = $("#pengaturan-msg");
+    const btn = $("#btn-save-pengaturan");
+    if (btn) { btn.disabled = true; btn.textContent = "Menyimpan..."; }
+    try {
+      const fd = new FormData(e.target);
+      const pengaturan = Object.fromEntries(fd);
+      const res = await authPost("savePengaturan", { pengaturan });
+      bustCache("pengaturanAdmin");
+      toast(msg, "success", res.message || "Pengaturan website berhasil disimpan!");
+      if (pengaturan.namaSekolah) {
+        $$(".brand-side-title").forEach(el => el.textContent = pengaturan.namaSekolah);
+      }
+    } catch (err) {
+      toast(msg, "error", err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "💾 Simpan Semua Pengaturan"; }
+    }
+  });
 }
 
 // ---------- INIT ----------

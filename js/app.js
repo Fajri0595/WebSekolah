@@ -328,15 +328,55 @@ async function renderGaleri(tipe) {
     const all = await ensureGaleriAll();
     if (!isLatestSeq("galeri-grid", seq)) return;
     const items = all.filter(i => i.Tipe === tipe);
-    c.innerHTML = items.length ? `<div class="grid grid-3">${items.map(i => `
+    c.innerHTML = items.length ? `<div class="grid grid-3">${items.map(i => {
+      if (tipe === "video") {
+        const v = parseVideoSource(i.URL);
+        return `
+        <div class="card">
+          <div class="thumb" style="position:relative;background:#0F172A;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;border-radius:6px" onclick="playGalleryVideo('${esc(i.URL)}', '${esc(i.Caption)}')">
+            ${v.thumbUrl ? `<img src="${esc(v.thumbUrl)}" alt="${esc(i.Caption)}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">` : ""}
+            <div style="position:absolute;inset:0;background:rgba(15,23,42,0.45);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:background 0.2s">
+              <div style="width:52px;height:52px;border-radius:50%;background:#D97706;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 18px rgba(0,0,0,0.4);padding-left:4px">▶</div>
+              <span style="color:#fff;font-size:12px;font-weight:600;margin-top:8px;text-shadow:0 1px 3px rgba(0,0,0,0.8)">Putar Video</span>
+            </div>
+          </div>
+          <p style="margin-top:10px;font-weight:600">${esc(i.Caption)}</p>
+          <p class="muted">${formatTanggal(i.Tanggal)}</p>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;width:100%" onclick="playGalleryVideo('${esc(i.URL)}', '${esc(i.Caption)}')">▶ Tonton Video</button>
+        </div>`;
+      }
+      return `
       <div class="card">
-        ${tipe === "video"
-          ? `<a href="${esc(i.URL)}" target="_blank" rel="noopener"><div class="thumb" style="display:flex;align-items:center;justify-content:center;font-size:32px">▶</div></a>`
-          : `<img class="thumb" src="${esc(driveImg(i.URL))}" alt="${esc(i.Caption)}">`}
+        <img class="thumb" src="${esc(driveImg(i.URL))}" alt="${esc(i.Caption)}">
         <p style="margin-top:10px">${esc(i.Caption)}</p>
         <p class="muted">${formatTanggal(i.Tanggal)}</p>
-      </div>`).join("")}</div>` : emptyHtml();
+      </div>`;
+    }).join("")}</div>` : emptyHtml();
   } catch (e) { if (isLatestSeq("galeri-grid", seq)) c.innerHTML = emptyHtml("Gagal memuat galeri."); }
+}
+
+function playGalleryVideo(url, caption) {
+  const v = parseVideoSource(url);
+  const overlay = document.getElementById("video-overlay");
+  const player = document.getElementById("video-modal-player");
+  const title = document.getElementById("video-modal-title");
+  if (!overlay || !player) return;
+
+  if (title) title.textContent = caption || "Pemutar Video Galeri";
+  if (v.type === "youtube" || v.type === "drive") {
+    player.innerHTML = `<iframe src="${esc(v.embedUrl)}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"></iframe>`;
+  } else {
+    player.innerHTML = `<video controls autoplay playsinline style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000"><source src="${esc(v.embedUrl)}">Browser Anda tidak mendukung pemutar video.</video>`;
+  }
+  overlay.classList.add("open");
+}
+
+function closeVideoModal(e) {
+  if (e && e.target && e.target.id !== "video-overlay" && !e.target.closest("button")) return;
+  const overlay = document.getElementById("video-overlay");
+  const player = document.getElementById("video-modal-player");
+  if (overlay) overlay.classList.remove("open");
+  if (player) player.innerHTML = "";
 }
 
 // ---------- PPDB : Banner Periode Aktif ----------
@@ -589,7 +629,7 @@ async function renderDokumen(kategori, containerId) {
       <tbody>${items.map(d => `
         <tr><td>${esc(d.NamaDokumen)}<br><span class="muted">${esc(d.Deskripsi || "")}</span></td>
         <td>${formatTanggal(d.Tanggal)}</td>
-        <td><a class="btn btn-outline" href="${esc(d.FileURL)}" target="_blank" rel="noopener">Unduh</a></td></tr>`).join("")}</tbody></table>`
+        <td><a class="btn btn-outline" href="${esc(driveDownloadUrl(d.FileURL))}" download="${esc(d.NamaDokumen)}" target="_blank" rel="noopener">Unduh</a></td></tr>`).join("")}</tbody></table>`
       : emptyHtml();
   } catch (e) { if (isLatestSeq(containerId, seq)) c.innerHTML = emptyHtml("Gagal memuat dokumen."); }
 }
@@ -646,6 +686,79 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.id === "detail-overlay") closeDetailModal();
   });
 
+  // Muat pengaturan dinamis sekolah dari admin
+  loadSchoolSettings();
+
   // Halaman awal: ikuti alamat di URL (default: beranda)
   handleRouteWithParams();
 });
+
+// ---------- PENGATURAN WEBSITE DINAMIS ----------
+function applySchoolSettings(cfg) {
+  if (!cfg) return;
+  if (cfg.namaSekolah) {
+    SCHOOL.name = cfg.namaSekolah;
+    document.title = cfg.namaSekolah + " — Portal Resmi";
+    const brandEl = document.getElementById("navbar-brand-name");
+    if (brandEl) brandEl.textContent = cfg.namaSekolah;
+    const footerName = document.getElementById("footer-school-name");
+    if (footerName) footerName.textContent = cfg.namaSekolah;
+    const copyrightEl = document.getElementById("footer-copyright");
+    if (copyrightEl) copyrightEl.textContent = `© ${new Date().getFullYear()} ${cfg.namaSekolah}. Hak Cipta Dilindungi Undang-Undang.`;
+  }
+  if (cfg.telepon) {
+    SCHOOL.phone = cfg.telepon;
+    const tPhone = document.getElementById("topbar-phone");
+    if (tPhone) tPhone.textContent = cfg.telepon;
+    const fPhone = document.getElementById("footer-phone");
+    if (fPhone) fPhone.textContent = cfg.telepon;
+    const lPhone = document.getElementById("layanan-phone");
+    if (lPhone) lPhone.textContent = cfg.telepon;
+  }
+  if (cfg.whatsapp) {
+    SCHOOL.whatsapp = cfg.whatsapp;
+    const fWa = document.getElementById("footer-wa");
+    if (fWa) fWa.textContent = cfg.whatsapp;
+    const lWa = document.getElementById("layanan-wa");
+    if (lWa) lWa.textContent = cfg.whatsapp;
+  }
+  if (cfg.email) {
+    SCHOOL.email = cfg.email;
+    const tEmail = document.getElementById("topbar-email");
+    if (tEmail) tEmail.textContent = cfg.email;
+    const fEmail = document.getElementById("footer-email");
+    if (fEmail) fEmail.textContent = cfg.email;
+  }
+  if (cfg.jamOperasional) {
+    const tHours = document.getElementById("topbar-hours");
+    if (tHours) tHours.textContent = cfg.jamOperasional;
+    const lHours = document.getElementById("layanan-hours");
+    if (lHours) lHours.textContent = "🕒 " + cfg.jamOperasional;
+  }
+  if (cfg.alamat) {
+    SCHOOL.address = cfg.alamat;
+    const fAddr = document.getElementById("footer-address");
+    if (fAddr) fAddr.textContent = cfg.alamat;
+    const lAddr = document.getElementById("layanan-alamat");
+    if (lAddr) lAddr.textContent = "📍 " + cfg.alamat;
+  }
+  if (cfg.akreditasi) {
+    const hBadge = document.getElementById("hero-badge");
+    if (hBadge) hBadge.innerHTML = `<span class="badge-dot"></span> ${esc(cfg.akreditasi)} • Portal Resmi`;
+  }
+  if (cfg.tagline) {
+    const hTag = document.getElementById("hero-tagline");
+    if (hTag) hTag.textContent = cfg.tagline;
+  }
+  if (cfg.slogan) {
+    SCHOOL.tagline = cfg.slogan;
+  }
+}
+
+async function loadSchoolSettings() {
+  try {
+    await cachedGet("app_pengaturan", "pengaturan", {}, applySchoolSettings);
+  } catch (e) {
+    console.warn("Gagal memuat pengaturan dinamis, menggunakan konfigurasi default:", e);
+  }
+}

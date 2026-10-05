@@ -110,11 +110,16 @@ function compressImage(file, maxWidth = 1600, quality = 0.8) {
 /**
  * Ubah <input type="file"> menjadi objek {name, type, base64} untuk dikirim ke backend.
  * Otomatis mengompresi berkas gambar jika terdeteksi.
+ * Batas default: video hingga 30MB, foto/dokumen 5MB.
  */
-async function fileToBase64(file, maxMb = 5) {
+async function fileToBase64(file, maxMb) {
   if (!file) return null;
+  const isVideo = (file.type && file.type.startsWith("video/")) || /\.(mp4|webm|mkv|mov|avi)$/i.test(file.name || "");
+  if (!maxMb) {
+    maxMb = isVideo ? 30 : 5;
+  }
   // Otomatis kompresi gambar sebelum kirim
-  if (file.type.startsWith("image/")) {
+  if (file.type && file.type.startsWith("image/")) {
     try {
       file = await compressImage(file);
     } catch (e) {
@@ -125,7 +130,7 @@ async function fileToBase64(file, maxMb = 5) {
   return new Promise((resolve, reject) => {
     const maxBytes = maxMb * 1024 * 1024;
     if (file.size > maxBytes) {
-      return reject(new Error("Ukuran berkas '" + file.name + "' terlalu besar (" + (file.size / (1024 * 1024)).toFixed(1) + " MB). Batas maksimum adalah " + maxMb + " MB. Silakan pilih berkas yang lebih kecil atau kompres terlebih dahulu."));
+      return reject(new Error("Ukuran berkas '" + file.name + "' terlalu besar (" + (file.size / (1024 * 1024)).toFixed(1) + " MB). Batas maksimum adalah " + maxMb + " MB."));
     }
     const reader = new FileReader();
     reader.onload = () => resolve({ name: file.name, type: file.type, base64: reader.result });
@@ -159,6 +164,69 @@ function driveImg(url) {
   if (!url) return "";
   const m = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/) || String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
   return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000` : url;
+}
+
+/**
+ * Ubah link berkas Google Drive menjadi direct download URL
+ * sehingga browser langsung mengunduh file secara otomatis tanpa membuka viewer Google Drive.
+ */
+function driveDownloadUrl(url) {
+  if (!url) return "";
+  const m = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/) || String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m) {
+    return `https://drive.usercontent.google.com/download?id=${m[1]}&export=download`;
+  }
+  return url;
+}
+
+/**
+ * Parse sumber video (Google Drive, YouTube, atau berkas video langsung)
+ * untuk diputar langsung di web tanpa harus membuka halaman Google Drive.
+ */
+function parseVideoSource(url) {
+  if (!url) return { type: "unknown", embedUrl: "", thumbUrl: "" };
+  const str = String(url).trim();
+
+  // 1. YouTube Video
+  const ytMatch = str.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  if (ytMatch) {
+    const id = ytMatch[1];
+    return {
+      type: "youtube",
+      id: id,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`,
+      thumbUrl: `https://img.youtube.com/vi/${id}/hqdefault.jpg`
+    };
+  }
+
+  // 2. Google Drive Video
+  const driveMatch = str.match(/\/d\/([a-zA-Z0-9_-]+)/) || str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (driveMatch) {
+    const id = driveMatch[1];
+    return {
+      type: "drive",
+      id: id,
+      embedUrl: `https://drive.google.com/file/d/${id}/preview`,
+      thumbUrl: `https://drive.google.com/thumbnail?id=${id}&sz=w800`
+    };
+  }
+
+  // 3. Direct HTML5 Video File (mp4, webm, mov, ogg)
+  if (/\.(mp4|webm|mov|ogg)($|\?)/i.test(str)) {
+    return {
+      type: "html5",
+      id: "",
+      embedUrl: str,
+      thumbUrl: ""
+    };
+  }
+
+  return {
+    type: "other",
+    id: "",
+    embedUrl: str,
+    thumbUrl: ""
+  };
 }
 
 // ============================================================
