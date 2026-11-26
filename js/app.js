@@ -257,8 +257,8 @@ function newsCardHtml(item) {
   const isNewsType = ["berita", "pengumuman", "agenda", "artikel"].includes(item.Kategori);
   const excerpt = cleanExcerpt(item, 125);
   const mediaHtml = item.GambarURL
-    ? `<img src="${esc(driveImg(item.GambarURL))}" alt="${esc(item.Judul)}" loading="lazy" width="640" height="400" onerror="this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(150deg,#1B3A6B,#08162B)\\'><img src=\\'img/logo-mark.png\\' alt=\\'\\' style=\\'width:52px;height:52px;object-fit:contain;opacity:.85\\'></div>'">`
-    : `<div style="width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(150deg,#1B3A6B,#08162B)"><img src="img/logo-mark.png" alt="" width="52" height="52" style="width:52px;height:52px;object-fit:contain;opacity:.85"></div>`;
+    ? `<img src="${esc(driveImg(item.GambarURL))}" alt="${esc(item.Judul)}" loading="lazy" width="640" height="400" onerror="this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(150deg,#1B3A6B,#08162B)\\'><img src=\\'img/logo-mark.png?v=202611262310\\' alt=\\'\\' style=\\'width:52px;height:52px;object-fit:contain;opacity:.85\\'></div>'">`
+    : `<div style="width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(150deg,#1B3A6B,#08162B)"><img src="img/logo-mark.png?v=202611262310" alt="" width="52" height="52" style="width:52px;height:52px;object-fit:contain;opacity:.85"></div>`;
 
   if (isNewsType) {
     return `
@@ -508,10 +508,10 @@ function renderNewsFeedCard(item) {
   const hasImg = Boolean(item.GambarURL);
   const thumbHtml = hasImg
     ? `<a class="news-feed-thumb" href="${href}" tabindex="-1" aria-hidden="true">
-         <img src="${esc(driveImg(item.GambarURL))}" alt="" loading="lazy" width="448" height="280" onerror="this.parentElement.innerHTML='<div class=\\'thumb-fallback\\'><img src=\\'img/logo-mark.png\\' alt=\\'\\'></div>'">
+         <img src="${esc(driveImg(item.GambarURL))}" alt="" loading="lazy" width="448" height="280" onerror="this.parentElement.innerHTML='<div class=\\'thumb-fallback\\'><img src=\\'img/logo-mark.png?v=202611262310\\' alt=\\'\\'></div>'">
        </a>`
     : `<a class="news-feed-thumb" href="${href}" tabindex="-1" aria-hidden="true">
-         <div class="thumb-fallback"><img src="img/logo-mark.png" alt="" width="54" height="54"></div>
+         <div class="thumb-fallback"><img src="img/logo-mark.png?v=202611262310" alt="" width="54" height="54"></div>
        </a>`;
 
   const bylineLabel = item.Kategori === "pengumuman"

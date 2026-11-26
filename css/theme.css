@@ -82,7 +82,7 @@ a { transition: color .2s; }
 .hero-photo { position: absolute; inset: 0; z-index: -2; aspect-ratio: auto; border-radius: 0; box-shadow: none; overflow: hidden;
   background: radial-gradient(60% 70% at 82% 22%, rgba(196,147,42,.32), transparent 60%), linear-gradient(160deg, #1A3A70 0%, #08162B 72%); }
 .hero-photo:hover { box-shadow: none; }
-.hero-photo::after { content: ""; position: absolute; right: 7%; top: 50%; width: min(34vw, 430px); aspect-ratio: 1; transform: translateY(-46%); background: url(../img/logo-mark.png) center / contain no-repeat; opacity: .14; animation: float 9s ease-in-out infinite alternate; }
+.hero-photo::after { content: ""; position: absolute; right: 7%; top: 50%; width: min(34vw, 430px); aspect-ratio: 1; transform: translateY(-46%); background: url(../img/logo-mark.png?v=202611262310) center / contain no-repeat; opacity: .14; animation: float 9s ease-in-out infinite alternate; }
 .hero-photo.has-media::after { display: none; }
 .hero::before { content: ""; position: absolute; inset: 0; z-index: -1;
   background: linear-gradient(95deg, rgba(8,22,43,.92) 0%, rgba(8,22,43,.7) 42%, rgba(8,22,43,.22) 100%), linear-gradient(0deg, rgba(8,22,43,.8), transparent 38%), linear-gradient(180deg, rgba(8,22,43,.6), transparent 24%); }
@@ -151,7 +151,7 @@ iframe.hero-video { inset: auto; top: 50%; left: 50%; width: max(100%, 177.78vh)
 
 /* ---------- Banner halaman dalam ---------- */
 .page-banner { position: relative; isolation: isolate; overflow: hidden; background: linear-gradient(160deg, #1A3A70 0%, #08162B 78%); color: #fff; padding: 176px 0 60px; }
-.page-banner::before { content: ""; position: absolute; z-index: -1; right: 4%; top: 55%; width: 340px; aspect-ratio: 1; transform: translateY(-40%); background: url(../img/logo-mark.png) center / contain no-repeat; opacity: .09; }
+.page-banner::before { content: ""; position: absolute; z-index: -1; right: 4%; top: 55%; width: 340px; aspect-ratio: 1; transform: translateY(-40%); background: url(../img/logo-mark.png?v=202611262310) center / contain no-repeat; opacity: .09; }
 .page-banner::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, var(--gold), transparent 55%); }
 .page-banner h1 { color: #fff; font-size: clamp(2rem, 4.2vw, 3.1rem); margin: 0 0 10px; }
 .page-banner p { color: rgba(255,255,255,.8); max-width: 62ch; margin: 0; font-size: 1.02rem; }
@@ -256,7 +256,7 @@ tbody tr:hover { background: #F7F9FC; }
 .login-shell { min-height: 100vh; display: grid; grid-template-columns: 1.05fr 1fr; background: #fff; }
 .login-brand { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; padding: 56px; color: #fff;
   background: radial-gradient(60% 60% at 85% 15%, rgba(196,147,42,.3), transparent 60%), linear-gradient(160deg, #1A3A70, #08162B 75%); }
-.login-brand::after { content: ""; position: absolute; z-index: -1; right: -90px; bottom: -70px; width: 420px; aspect-ratio: 1; background: url(../img/logo-mark.png) center / contain no-repeat; opacity: .1; }
+.login-brand::after { content: ""; position: absolute; z-index: -1; right: -90px; bottom: -70px; width: 420px; aspect-ratio: 1; background: url(../img/logo-mark.png?v=202611262310) center / contain no-repeat; opacity: .1; }
 .lb-logo { width: 68px; height: 68px; object-fit: contain; animation: rise .9s var(--ease) both; }
 .login-brand h2 { color: #fff; font-size: clamp(1.9rem, 3.2vw, 2.8rem); line-height: 1.12; margin-bottom: 14px; animation: rise .9s var(--ease) .15s both; }
 .login-brand p { color: rgba(255,255,255,.8); max-width: 42ch; animation: rise .9s var(--ease) .3s both; }
