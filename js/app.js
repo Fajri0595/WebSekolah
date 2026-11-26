@@ -18,14 +18,24 @@ function handleRouteWithParams() {
   const hash = location.hash || "";
   const [routePart, queryPart] = hash.replace(/^#\/?/, "").split("?");
   const pageId = document.getElementById("page-" + routePart) ? routePart : "beranda";
-  showPage(pageId);
-  if (queryPart) {
-    const params = new URLSearchParams(queryPart);
-    const contentId = params.get("id");
-    if (contentId) {
-      // Buka otomatis detail konten jika link memiliki param ?id=...
-      setTimeout(() => openContentDetail(contentId), 400);
+  const params = new URLSearchParams(queryPart || "");
+  const contentId = params.get("id");
+  const katParam = params.get("kategori");
+
+  if (pageId === "berita") {
+    beritaState.activeId = contentId || null;
+    if (katParam && ["semua", "berita", "pengumuman", "agenda", "artikel"].includes(katParam)) {
+      beritaState.tab = katParam;
+      beritaState.page = 1;
     }
+    showPage("berita");
+    if (loadedPages.has("berita")) renderBeritaPage();
+    return;
+  }
+
+  showPage(pageId);
+  if (contentId) {
+    setTimeout(() => openContentDetail(contentId), 400);
   }
 }
 
@@ -59,7 +69,7 @@ function loadPage(pageId) {
     case "guru": renderGuru(); break;
     case "kesiswaan": initTabbedContent("kesiswaan-tabs", "kesiswaan-content", "kesiswaan", "kegiatan", true); break;
     case "prestasi": renderPrestasi(); break;
-    case "berita": initTabbedContent("berita-tabs", "berita-content", "berita", "berita"); break;
+    case "berita": initBeritaPage(); break;
     case "galeri": renderGaleri("foto"); break;
     case "ppdb": initTabbedContent("ppdb-tabs", "ppdb-content", "ppdb_info", "info"); loadPpdbBanner(); break;
     case "dokumen": initTabbedContent("dokumen-tabs", "dokumen-content", "dokumen", "formulir", false, true); break;
@@ -67,22 +77,142 @@ function loadPage(pageId) {
   }
 }
 
-// ---------- DETAIL KONTEN (modal) ----------
-// Menyimpan item yang sedang ditampilkan di kartu (Berita/Pengumuman/Artikel/
-// Prestasi) agar saat kartu diklik, isi lengkapnya bisa dibuka tanpa fetch ulang.
+// ---------- DETAIL KONTEN (modal untuk Prestasi / Kegiatan) ----------
 const contentIndex = {};
 function indexItems(items) { items.forEach(i => { contentIndex[i.ID] = i; }); }
+
+const KATEGORI_LABELS = {
+  berita: "Berita Sekolah",
+  pengumuman: "Pengumuman Resmi",
+  agenda: "Agenda Sekolah",
+  artikel: "Artikel & Opini",
+  prestasi: "Prestasi Siswa",
+  kegiatan: "Kegiatan Siswa",
+  sejarah: "Sejarah Sekolah",
+  visimisi: "Visi & Misi",
+  sambutan: "Sambutan Kepala Sekolah",
+  struktur: "Struktur Organisasi",
+  fasilitas: "Fasilitas Sekolah"
+};
+function kategoriLabel(k) { return KATEGORI_LABELS[k] || k || "Informasi"; }
+
+function formatTanggalLengkap(dateStr) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+function stripPlainText(raw) {
+  return String(raw || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/^#+\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanExcerpt(item, maxLen = 140) {
+  let base = (item.Ringkasan || "").trim();
+  if (!base) {
+    base = stripPlainText(item.Isi || "");
+    // Bersihkan dateline awal bila ada (mis. "SMA Nusantara, 18 September 2026 ")
+    base = base.replace(/^(?:JAKARTA|SMA\s+(?:Negeri\s+)?Nusantara)[^a-zA-Z0-9\n]{1,4}[0-9]{1,2}\s+[A-Za-z]+\s+[0-9]{4}\s*[-–:]?\s*/i, "");
+  }
+  if (!base) return "";
+  if (base.length <= maxLen) return base;
+  const cut = base.slice(0, maxLen).replace(/\s+\S*$/, "");
+  return (cut || base.slice(0, maxLen)) + "…";
+}
+
+function estimateReadMinutes(item) {
+  const words = stripPlainText((item.Judul || "") + " " + (item.Isi || "")).split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 180));
+}
+
+/**
+ * Mengubah teks polos/markdown warisan maupun HTML editor kaya menjadi HTML semantik rapi.
+ */
+function formatRichContent(raw) {
+  const str = String(raw || "").trim();
+  if (!str) return "<p class='muted'>Konten belum tersedia.</p>";
+  if (/<(p|h[1-6]|ul|ol|li|blockquote|table|div)\b/i.test(str)) {
+    return str
+      .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s.,;:!?)]|$)/g, "$1<em>$2</em>");
+  }
+  const inlineFmt = line => esc(line)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[\s(])\*([^*]+)\*(?=[\s.,;:!?)]|$)/g, "$1<em>$2</em>");
+
+  const lines = str.replace(/\r\n/g, "\n").split("\n");
+  const out = [];
+  let inOl = false, inUl = false, paraBuf = [];
+
+  const flushPara = () => {
+    if (paraBuf.length) {
+      out.push("<p>" + paraBuf.join("<br>") + "</p>");
+      paraBuf = [];
+    }
+  };
+  const closeLists = () => {
+    if (inOl) { out.push("</ol>"); inOl = false; }
+    if (inUl) { out.push("</ul>"); inUl = false; }
+  };
+
+  for (const rawLine of lines) {
+    const t = rawLine.trim();
+    if (!t) {
+      flushPara();
+      closeLists();
+      continue;
+    }
+    if (/^\*\*[^*]+\*\*$/.test(t) && t.length < 80) {
+      flushPara(); closeLists();
+      out.push("<h3>" + esc(t.slice(2, -2)) + "</h3>");
+      continue;
+    }
+    const olMatch = t.match(/^\d+[.)]\s+(.*)$/);
+    if (olMatch) {
+      flushPara();
+      if (inUl) { out.push("</ul>"); inUl = false; }
+      if (!inOl) { out.push("<ol>"); inOl = true; }
+      out.push("<li>" + inlineFmt(olMatch[1]) + "</li>");
+      continue;
+    }
+    const ulMatch = t.match(/^[-•]\s+(.*)$/);
+    if (ulMatch) {
+      flushPara();
+      if (inOl) { out.push("</ol>"); inOl = false; }
+      if (!inUl) { out.push("<ul>"); inUl = true; }
+      out.push("<li>" + inlineFmt(ulMatch[1]) + "</li>");
+      continue;
+    }
+    closeLists();
+    paraBuf.push(inlineFmt(t));
+  }
+  flushPara();
+  closeLists();
+  return out.join("\n");
+}
 
 function openContentDetail(id) {
   const item = contentIndex[id];
   if (!item) return;
+  if (["berita", "pengumuman", "agenda", "artikel"].includes(item.Kategori)) {
+    location.hash = "/berita?id=" + encodeURIComponent(item.ID);
+    return;
+  }
   document.getElementById("detail-box").innerHTML = `
-    <button type="button" class="btn btn-outline btn-sm" style="float:right" onclick="closeDetailModal()">✕ Tutup</button>
-    <span class="pill">${esc(item.Kategori)}</span>
-    <h2 style="margin-top:12px">${esc(item.Judul)}</h2>
-    <p class="muted">${formatTanggal(item.Tanggal)}</p>
-    ${item.GambarURL ? `<img src="${esc(driveImg(item.GambarURL))}" style="width:100%;border-radius:8px;margin:12px 0" alt="${esc(item.Judul)}">` : ""}
-    <div style="margin-top:12px;line-height:1.7">${item.Isi || ""}</div>`;
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px">
+      <span class="pill">${esc(kategoriLabel(item.Kategori))}</span>
+      <button type="button" class="btn btn-outline btn-sm" onclick="closeDetailModal()">✕ Tutup</button>
+    </div>
+    <h2 style="margin:0 0 8px">${esc(item.Judul)}</h2>
+    <p class="muted" style="margin-bottom:16px">${formatTanggalLengkap(item.Tanggal)}</p>
+    ${item.GambarURL ? `<img src="${esc(driveImg(item.GambarURL))}" style="width:100%;border-radius:10px;margin:0 0 18px;max-height:360px;object-fit:cover" alt="${esc(item.Judul)}">` : ""}
+    <div class="rich-content">${formatRichContent(item.Isi)}</div>`;
   document.getElementById("detail-overlay").classList.add("open");
 }
 function closeDetailModal() { document.getElementById("detail-overlay").classList.remove("open"); }
@@ -124,14 +254,31 @@ function emptyHtml(msg) { return `<div class="loading">${msg || "Belum ada data.
 
 function newsCardHtml(item) {
   contentIndex[item.ID] = item;
+  const isNewsType = ["berita", "pengumuman", "agenda", "artikel"].includes(item.Kategori);
+  const excerpt = cleanExcerpt(item, 125);
+  const mediaHtml = item.GambarURL
+    ? `<img src="${esc(driveImg(item.GambarURL))}" alt="${esc(item.Judul)}" loading="lazy" width="640" height="400" onerror="this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(150deg,#1B3A6B,#08162B)\\'><img src=\\'img/logo-mark.png\\' alt=\\'\\' style=\\'width:52px;height:52px;object-fit:contain;opacity:.85\\'></div>'">`
+    : `<div style="width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(150deg,#1B3A6B,#08162B)"><img src="img/logo-mark.png" alt="" width="52" height="52" style="width:52px;height:52px;object-fit:contain;opacity:.85"></div>`;
+
+  if (isNewsType) {
+    return `
+    <a class="card news-card" href="#/berita?id=${encodeURIComponent(item.ID)}">
+      <div class="news-media">${mediaHtml}</div>
+      <span class="pill" style="margin-top:12px">${esc(kategoriLabel(item.Kategori))}</span>
+      <h3 style="margin-top:10px">${esc(item.Judul)}</h3>
+      <p class="muted">${formatTanggal(item.Tanggal)} • ${estimateReadMinutes(item)} mnt baca</p>
+      ${excerpt ? `<p>${esc(excerpt)}</p>` : ""}
+      <span class="read-more">Baca selengkapnya</span>
+    </a>`;
+  }
   return `
-    <div class="card news-card" style="cursor:pointer" onclick="openContentDetail('${esc(item.ID)}')">
-      <div class="news-media"><img src="${esc(driveImg(item.GambarURL))}" alt="${esc(item.Judul)}" loading="lazy" onerror="this.style.visibility='hidden'"></div>
-      <span class="pill" style="margin-top:12px">${esc(item.Kategori)}</span>
+    <div class="card news-card" role="button" tabindex="0" style="cursor:pointer" onclick="openContentDetail('${esc(item.ID)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openContentDetail('${esc(item.ID)}');}">
+      <div class="news-media">${mediaHtml}</div>
+      <span class="pill" style="margin-top:12px">${esc(kategoriLabel(item.Kategori))}</span>
       <h3 style="margin-top:10px">${esc(item.Judul)}</h3>
       <p class="muted">${formatTanggal(item.Tanggal)}</p>
-      <p>${esc((item.Ringkasan || "").slice(0, 120))}...</p>
-      <span class="read-more">Baca selengkapnya</span>
+      ${excerpt ? `<p>${esc(excerpt)}</p>` : ""}
+      <span class="read-more">Lihat detail</span>
     </div>`;
 }
 
@@ -196,7 +343,7 @@ async function renderBeranda() {
     indexItems(prestasi);
     beritaEl.innerHTML = berita.length ? berita.map(newsCardHtml).join("") : emptyHtml();
     prestasiEl.innerHTML = prestasi.length ? prestasi.map(p => `
-      <div class="card" style="cursor:pointer" onclick="openContentDetail('${esc(p.ID)}')">
+      <div class="card" role="button" tabindex="0" style="cursor:pointer" onclick="openContentDetail('${esc(p.ID)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openContentDetail('${esc(p.ID)}');}">
         <span class="pill" style="background:var(--gold)">Prestasi</span>
         <h3 style="margin-top:10px">${esc(p.Judul)}</h3>
         <p class="muted">${formatTanggal(p.Tanggal)}</p>
@@ -236,18 +383,604 @@ async function renderKategoriList(kategori, containerId) {
     if (!isLatestSeq(containerId, seq)) return; // tab sudah berpindah lagi, abaikan hasil basi ini
     const items = all.filter(i => i.Kategori === kategori);
     if (!items.length) return (c.innerHTML = emptyHtml());
-    // Kategori naratif tunggal (sejarah/visimisi/sambutan/struktur) tampil sebagai artikel utuh
-    if (["sejarah", "visimisi", "sambutan", "struktur", "fasilitas"].includes(kategori)) {
+    // Kategori naratif tunggal (sejarah/visimisi/sambutan/struktur/fasilitas/ppdb_*) tampil sebagai artikel utuh
+    if (["sejarah", "visimisi", "sambutan", "struktur", "fasilitas", "ppdb_info", "ppdb_persyaratan", "ppdb_jadwal", "ppdb_alur"].includes(kategori)) {
       c.innerHTML = items.map(i => `
         <article class="card" style="margin-bottom:16px">
           <h2>${esc(i.Judul)}</h2>
-          ${i.GambarURL ? `<img src="${esc(driveImg(i.GambarURL))}" style="width:100%;border-radius:8px;margin-bottom:16px" alt="${esc(i.Judul)}">` : ""}
-          <div>${i.Isi}</div>
+          ${i.GambarURL ? `<img src="${esc(driveImg(i.GambarURL))}" style="width:100%;max-height:420px;object-fit:cover;border-radius:10px;margin-bottom:18px" alt="${esc(i.Judul)}">` : ""}
+          <div class="rich-content">${formatRichContent(i.Isi)}</div>
         </article>`).join("");
     } else {
       c.innerHTML = `<div class="grid grid-3">${items.map(newsCardHtml).join("")}</div>`;
     }
   } catch (e) { if (isLatestSeq(containerId, seq)) c.innerHTML = emptyHtml("Gagal memuat konten."); }
+}
+
+// ---------- PORTAL BERITA & INFORMASI RESMI ----------
+const NEWS_TYPES = ["berita", "pengumuman", "agenda", "artikel"];
+const beritaState = { tab: "semua", q: "", year: "", page: 1, activeId: null };
+
+function initBeritaPage() {
+  const tabsEl = document.getElementById("berita-tabs");
+  if (tabsEl && !tabsEl.dataset.bound) {
+    tabsEl.dataset.bound = "1";
+    tabsEl.querySelectorAll("button[data-tab]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        selectBeritaCategory(btn.dataset.tab);
+      });
+    });
+  }
+  renderBeritaPage();
+}
+
+function selectBeritaCategory(tab) {
+  beritaState.tab = tab;
+  beritaState.page = 1;
+  beritaState.activeId = null;
+  if (location.hash !== "#/berita") {
+    history.replaceState(null, "", "#/berita");
+  }
+  renderBeritaPage();
+}
+
+function updateBeritaTabUi(counts) {
+  const tabsEl = document.getElementById("berita-tabs");
+  if (!tabsEl) return;
+  const labels = {
+    semua: "Semua Informasi",
+    berita: "Berita Sekolah",
+    pengumuman: "Pengumuman Resmi",
+    agenda: "Agenda Sekolah",
+    artikel: "Artikel & Opini"
+  };
+  tabsEl.querySelectorAll("button[data-tab]").forEach(btn => {
+    const t = btn.dataset.tab;
+    const isActive = beritaState.tab === t && !beritaState.activeId;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-selected", isActive ? "true" : "false");
+    const cnt = counts ? (counts[t] || 0) : null;
+    btn.innerHTML = `${esc(labels[t] || t)}${cnt !== null ? ` <span class="cat-count">${cnt}</span>` : ""}`;
+  });
+}
+
+const INDO_MONTHS = {
+  januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
+  juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11
+};
+function resolveAgendaDate(item) {
+  const txt = (item.Ringkasan || "") + " " + stripPlainText(item.Isi || "");
+  const m = txt.match(/\b(\d{1,2})(?:\s*(?:s\.d\.|-|sampai)\s*\d{1,2})?\s+(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+(20\d{2})\b/i);
+  if (m) {
+    const day = parseInt(m[1], 10);
+    const mon = INDO_MONTHS[m[2].toLowerCase()];
+    const yr = parseInt(m[3], 10);
+    const parsed = new Date(yr, mon, day, 8, 0, 0);
+    if (!isNaN(parsed)) return parsed;
+  }
+  const fallback = new Date(item.Tanggal);
+  return isNaN(fallback) ? null : fallback;
+}
+
+function agendaParts(itemOrDate) {
+  const d = (itemOrDate && typeof itemOrDate === "object" && "Kategori" in itemOrDate)
+    ? resolveAgendaDate(itemOrDate)
+    : new Date(itemOrDate);
+  if (!d || isNaN(d)) return { day: "--", month: "AGS", year: "", full: "-" };
+  return {
+    day: String(d.getDate()).padStart(2, "0"),
+    month: d.toLocaleDateString("id-ID", { month: "short" }).toUpperCase(),
+    year: String(d.getFullYear()),
+    full: d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+  };
+}
+
+function renderNewsFeedCard(item) {
+  const excerpt = cleanExcerpt(item, 175);
+  const href = `#/berita?id=${encodeURIComponent(item.ID)}`;
+  if (item.Kategori === "agenda") {
+    const dt = agendaParts(item);
+    return `
+      <article class="news-feed-item news-feed-item--agenda">
+        <div class="agenda-date-box" aria-hidden="true">
+          <span class="ag-month">${esc(dt.month)}</span>
+          <span class="ag-day">${esc(dt.day)}</span>
+          <span class="ag-year">${esc(dt.year)}</span>
+        </div>
+        <div class="news-feed-body">
+          <div>
+            <div class="news-meta-row">
+              <span class="news-cat-tag" data-kat="agenda">Agenda Sekolah</span>
+              <span>•</span>
+              <span>Jadwal Kegiatan: ${esc(dt.full)}</span>
+            </div>
+            <h3><a href="${href}">${esc(item.Judul)}</a></h3>
+            ${excerpt ? `<p class="news-feed-excerpt">${esc(excerpt)}</p>` : ""}
+          </div>
+          <div class="news-feed-foot">
+            <span>Sekretariat &amp; Kurikulum SMA Negeri Nusantara</span>
+            <a class="news-read-link" href="${href}">Detail agenda</a>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  const hasImg = Boolean(item.GambarURL);
+  const thumbHtml = hasImg
+    ? `<a class="news-feed-thumb" href="${href}" tabindex="-1" aria-hidden="true">
+         <img src="${esc(driveImg(item.GambarURL))}" alt="" loading="lazy" width="448" height="280" onerror="this.parentElement.innerHTML='<div class=\\'thumb-fallback\\'><img src=\\'img/logo-mark.png\\' alt=\\'\\'></div>'">
+       </a>`
+    : `<a class="news-feed-thumb" href="${href}" tabindex="-1" aria-hidden="true">
+         <div class="thumb-fallback"><img src="img/logo-mark.png" alt="" width="54" height="54"></div>
+       </a>`;
+
+  const bylineLabel = item.Kategori === "pengumuman"
+    ? "Pimpinan & Tata Usaha Sekolah"
+    : item.Kategori === "artikel"
+      ? "Rubrik Opini & Literasi Sivitas"
+      : "Tim Humas & Publikasi Resmi";
+
+  return `
+    <article class="news-feed-item">
+      ${thumbHtml}
+      <div class="news-feed-body">
+        <div>
+          <div class="news-meta-row">
+            <span class="news-cat-tag" data-kat="${esc(item.Kategori)}">${esc(kategoriLabel(item.Kategori))}</span>
+            <span>•</span>
+            <span>${formatTanggal(item.Tanggal)}</span>
+            <span>•</span>
+            <span>${estimateReadMinutes(item)} menit baca</span>
+          </div>
+          <h3><a href="${href}">${esc(item.Judul)}</a></h3>
+          ${excerpt ? `<p class="news-feed-excerpt">${esc(excerpt)}</p>` : ""}
+        </div>
+        <div class="news-feed-foot">
+          <span>${bylineLabel}</span>
+          <a class="news-read-link" href="${href}">Baca selengkapnya</a>
+        </div>
+      </div>
+    </article>`;
+}
+
+function renderBeritaSidebar(newsItems, dokumenItems, counts) {
+  const sideEl = document.getElementById("berita-sidebar");
+  if (!sideEl) return;
+
+  const years = Array.from(new Set(newsItems.map(i => {
+    const d = new Date(i.Tanggal);
+    return isNaN(d) ? "" : String(d.getFullYear());
+  }).filter(Boolean))).sort((a, b) => b - a);
+
+  const agendas = newsItems
+    .filter(i => i.Kategori === "agenda")
+    .slice()
+    .sort((a, b) => (resolveAgendaDate(a) || 0) - (resolveAgendaDate(b) || 0))
+    .slice(0, 4);
+
+  const pengumumanTop = newsItems.filter(i => i.Kategori === "pengumuman").slice(0, 2);
+  const docsTop = (dokumenItems || []).slice(0, 3);
+
+  sideEl.innerHTML = `
+    <div class="news-widget">
+      <h4>Cari Warta &amp; Arsip</h4>
+      <form class="news-search-form" id="berita-search-form">
+        <div class="field">
+          <label for="berita-q">Kata Kunci Informasi</label>
+          <input id="berita-q" type="search" placeholder="Ketik topik: OSN, PPDB, Rapor..." value="${esc(beritaState.q)}">
+        </div>
+        <div class="field">
+          <label for="berita-year">Tahun Publikasi</label>
+          <select id="berita-year">
+            <option value="">Semua Tahun</option>
+            ${years.map(y => `<option value="${esc(y)}" ${beritaState.year === y ? "selected" : ""}>Tahun ${esc(y)}</option>`).join("")}
+          </select>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="submit" class="btn btn-primary btn-sm" style="flex:1;justify-content:center">Terapkan Filter</button>
+          ${(beritaState.q || beritaState.year) ? `<button type="button" class="btn btn-outline btn-sm" id="berita-reset-btn">Reset</button>` : ""}
+        </div>
+      </form>
+    </div>
+
+    <div class="news-widget">
+      <h4>Agenda Sekolah</h4>
+      ${agendas.length ? `
+        <ul class="sidebar-agenda-list">
+          ${agendas.map(a => {
+            const dt = agendaParts(a);
+            return `<li class="sidebar-agenda-item">
+              <a href="#/berita?id=${encodeURIComponent(a.ID)}">
+                <div class="mini-cal"><b>${esc(dt.day)}</b><small>${esc(dt.month)}</small></div>
+                <div class="ag-info">
+                  <strong>${esc(a.Judul)}</strong>
+                  <span>${esc(dt.full)}</span>
+                </div>
+              </a>
+            </li>`;
+          }).join("")}
+        </ul>` : `<p class="muted" style="margin:0">Belum ada jadwal agenda terbaru.</p>`}
+    </div>
+
+    <div class="news-widget">
+      <h4>Edaran &amp; Dokumen Resmi</h4>
+      ${(pengumumanTop.length || docsTop.length) ? `
+        <ul class="sidebar-doc-list">
+          ${pengumumanTop.map(p => `
+            <li class="sidebar-doc-item">
+              <a href="#/berita?id=${encodeURIComponent(p.ID)}">
+                <span class="doc-badge-info">INFO</span>
+                <div>
+                  <strong>${esc(p.Judul)}</strong>
+                  <small>Pengumuman • ${formatTanggal(p.Tanggal)}</small>
+                </div>
+              </a>
+            </li>`).join("")}
+          ${docsTop.map(d => `
+            <li class="sidebar-doc-item">
+              <a href="${esc(driveDownloadUrl(d.FileURL))}" target="_blank" rel="noopener">
+                <span class="doc-badge-pdf">PDF</span>
+                <div>
+                  <strong>${esc(d.NamaDokumen)}</strong>
+                  <small>Unduh berkas resmi • ${formatTanggal(d.Tanggal)}</small>
+                </div>
+              </a>
+            </li>`).join("")}
+        </ul>
+        <p style="margin:12px 0 0;text-align:right"><a class="news-read-link" href="#/dokumen" data-page="dokumen">Pusat Unduh Dokumen</a></p>
+      ` : `<p class="muted" style="margin:0">Belum ada surat edaran terbit.</p>`}
+    </div>
+
+    <div class="news-widget">
+      <h4>Klasifikasi Informasi</h4>
+      <div class="sidebar-cat-list">
+        ${[
+          ["semua", "Semua Informasi Terpadu"],
+          ["berita", "Warta & Berita Sekolah"],
+          ["pengumuman", "Pengumuman Resmi"],
+          ["agenda", "Agenda Kegiatan"],
+          ["artikel", "Artikel & Karya Ilmiah"]
+        ].map(([k, lbl]) => `
+          <button type="button" class="${!beritaState.activeId && beritaState.tab === k ? "active" : ""}" onclick="selectBeritaCategory('${k}')">
+            <span>${lbl}</span>
+            <span class="cnt">${counts[k] || 0}</span>
+          </button>`).join("")}
+        <a href="#/prestasi" data-page="prestasi">
+          <span>Arsip Prestasi Siswa</span>
+          <span class="cnt">${counts.prestasi || 0}</span>
+        </a>
+      </div>
+    </div>`;
+
+  const form = document.getElementById("berita-search-form");
+  if (form) {
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      beritaState.q = document.getElementById("berita-q").value.trim();
+      beritaState.year = document.getElementById("berita-year").value;
+      beritaState.page = 1;
+      beritaState.activeId = null;
+      if (location.hash !== "#/berita") history.replaceState(null, "", "#/berita");
+      renderBeritaPage();
+    });
+  }
+  const resetBtn = document.getElementById("berita-reset-btn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      beritaState.q = "";
+      beritaState.year = "";
+      beritaState.page = 1;
+      renderBeritaPage();
+    });
+  }
+}
+
+function renderBeritaReader(item, allNews) {
+  const related = allNews
+    .filter(x => String(x.ID) !== String(item.ID))
+    .sort((a, b) => (b.Kategori === item.Kategori ? 1 : 0) - (a.Kategori === item.Kategori ? 1 : 0))
+    .slice(0, 3);
+
+  const shareUrl = location.origin + location.pathname + "#/berita?id=" + encodeURIComponent(item.ID);
+  const waShare = "https://wa.me/?text=" + encodeURIComponent(item.Judul + " - " + SCHOOL.name + "\n" + shareUrl);
+  const highResImg = item.GambarURL ? driveImg(item.GambarURL).replace(/sz=w\d+/, "sz=w1400") : "";
+
+  return `
+    <article class="news-reader">
+      <div class="reader-topbar">
+        <nav class="reader-breadcrumb" aria-label="Breadcrumb">
+          <a href="#/beranda" data-page="beranda">Beranda</a>
+          <span>/</span>
+          <a href="#/berita" onclick="event.preventDefault();selectBeritaCategory('semua')">Berita &amp; Informasi</a>
+          <span>/</span>
+          <span>${esc(kategoriLabel(item.Kategori))}</span>
+        </nav>
+        <button type="button" class="btn btn-outline btn-sm" onclick="selectBeritaCategory('${NEWS_TYPES.includes(item.Kategori) ? item.Kategori : "semua"}')">← Kembali ke Indeks</button>
+      </div>
+
+      <span class="news-cat-tag" data-kat="${esc(item.Kategori)}">${esc(kategoriLabel(item.Kategori))}</span>
+      <h2 class="reader-title">${esc(item.Judul)}</h2>
+
+      <div class="reader-meta-bar">
+        <div class="news-byline">
+          <div class="byline-avatar">HM</div>
+          <div class="byline-text">
+            <strong>Humas &amp; Publikasi Resmi ${esc(SCHOOL.name)}</strong>
+            <span>Diterbitkan ${formatTanggalLengkap(item.Tanggal)} • Estimasi ${estimateReadMinutes(item)} menit baca</span>
+          </div>
+        </div>
+        <div class="reader-share">
+          <a class="btn-share" href="${waShare}" target="_blank" rel="noopener">Bagikan WA</a>
+          <button type="button" class="btn-share" id="btn-copy-news-link" onclick="copyNewsLink('${esc(item.ID)}')">Salin Tautan</button>
+          <button type="button" class="btn-share" onclick="printNewsArticle('${esc(item.ID)}')">Cetak Berita</button>
+        </div>
+      </div>
+
+      ${highResImg ? `
+        <figure class="reader-cover">
+          <img src="${esc(highResImg)}" alt="${esc(item.Judul)}" width="960" height="540" onerror="this.parentElement.style.display='none'">
+          <figcaption>Dokumentasi resmi ${esc(SCHOOL.name)} • ${esc(item.Judul)}</figcaption>
+        </figure>` : ""}
+
+      <div class="news-article-body">${formatRichContent(item.Isi)}</div>
+
+      ${related.length ? `
+        <section class="reader-related" aria-label="Informasi terkait">
+          <h3>Informasi &amp; Berita Terkait</h3>
+          <div class="related-grid">
+            ${related.map(r => `
+              <a class="related-card" href="#/berita?id=${encodeURIComponent(r.ID)}">
+                <span class="news-cat-tag" data-kat="${esc(r.Kategori)}" style="align-self:flex-start">${esc(kategoriLabel(r.Kategori))}</span>
+                <h4>${esc(r.Judul)}</h4>
+                <span class="muted">${formatTanggal(r.Tanggal)}</span>
+              </a>`).join("")}
+          </div>
+        </section>` : ""}
+    </article>`;
+}
+
+function copyNewsLink(id) {
+  const url = location.origin + location.pathname + "#/berita?id=" + encodeURIComponent(id);
+  const btn = document.getElementById("btn-copy-news-link");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      if (btn) { btn.textContent = "✓ Tautan Tersalin"; setTimeout(() => { btn.textContent = "Salin Tautan"; }, 2200); }
+    });
+  }
+}
+
+function printNewsArticle(id) {
+  const item = contentIndex[id];
+  if (!item) return;
+  const win = window.open("", "_blank");
+  if (!win) return;
+  win.document.write(`<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>${esc(item.Judul)} | ${esc(SCHOOL.name)}</title>
+    <style>
+      @page { size: A4 portrait; margin: 20mm; }
+      body { font-family: Georgia, 'Times New Roman', serif; color: #111827; line-height: 1.7; max-width: 720px; margin: 0 auto; padding: 20px; }
+      .kop { border-bottom: 3px double #0F172A; padding-bottom: 10px; margin-bottom: 20px; font-family: Arial, sans-serif; }
+      .kop h2 { margin: 0; font-size: 15pt; color: #1B3A6B; }
+      .kop p { margin: 3px 0 0; font-size: 9.5pt; color: #475569; }
+      .kat { display: inline-block; font-family: Arial, sans-serif; font-size: 9pt; font-weight: bold; text-transform: uppercase; color: #1B3A6B; margin-bottom: 6px; }
+      h1 { font-size: 19pt; line-height: 1.28; margin: 0 0 8px; }
+      .meta { font-family: Arial, sans-serif; font-size: 9.5pt; color: #64748B; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid #CBD5E1; }
+      img { max-width: 100%; border-radius: 6px; margin-bottom: 16px; }
+      blockquote { margin: 14px 0; padding: 10px 16px; border-left: 3px solid #C4932A; background: #F8FAFC; font-style: italic; }
+      @media print { .no-print { display: none; } body { padding: 0; } }
+    </style></head><body>
+    <div class="no-print" style="text-align:right;margin-bottom:14px"><button onclick="window.print()" style="padding:8px 16px;background:#1B3A6B;color:#fff;border:0;border-radius:6px;cursor:pointer">Cetak / Simpan PDF</button></div>
+    <div class="kop"><h2>${esc(SCHOOL.name).toUpperCase()}</h2><p>${esc(SCHOOL.address)} • Telp: ${esc(SCHOOL.phone)} • ${esc(SCHOOL.email)}</p></div>
+    <span class="kat">${esc(kategoriLabel(item.Kategori))}</span>
+    <h1>${esc(item.Judul)}</h1>
+    <div class="meta">Diterbitkan: ${formatTanggalLengkap(item.Tanggal)} • Humas &amp; Publikasi Resmi ${esc(SCHOOL.name)}</div>
+    ${item.GambarURL ? `<img src="${esc(driveImg(item.GambarURL))}" alt="">` : ""}
+    <div>${formatRichContent(item.Isi)}</div>
+  </body></html>`);
+  win.document.close();
+}
+
+async function renderBeritaPage() {
+  const mainEl = document.getElementById("berita-content");
+  const filterWrap = document.getElementById("berita-filter-wrap");
+  const metaBanner = document.getElementById("berita-edition-meta");
+  if (!mainEl) return;
+
+  const seq = nextSeq("berita-page");
+  onUpdate.konten = () => { if (isLatestSeq("berita-page", seq)) renderBeritaPage(); };
+  onUpdate.dokumen = () => { if (isLatestSeq("berita-page", seq)) renderBeritaPage(); };
+
+  if (!bulk.konten) mainEl.innerHTML = loadingHtml();
+
+  try {
+    const [allKonten, allDokumen] = await Promise.all([
+      ensureKontenAll(),
+      ensureDokumenAll().catch(() => [])
+    ]);
+    if (!isLatestSeq("berita-page", seq)) return;
+
+    indexItems(allKonten);
+    const newsItems = allKonten.filter(i => NEWS_TYPES.includes(i.Kategori));
+    const counts = {
+      semua: newsItems.length,
+      berita: newsItems.filter(i => i.Kategori === "berita").length,
+      pengumuman: newsItems.filter(i => i.Kategori === "pengumuman").length,
+      agenda: newsItems.filter(i => i.Kategori === "agenda").length,
+      artikel: newsItems.filter(i => i.Kategori === "artikel").length,
+      prestasi: allKonten.filter(i => i.Kategori === "prestasi").length
+    };
+
+    if (metaBanner) {
+      const latestDate = newsItems.length ? formatTanggal(newsItems[0].Tanggal) : formatTanggal(new Date().toISOString());
+      metaBanner.innerHTML = `
+        <span class="news-meta-chip">Terbitan Aktif: <strong>${counts.semua} Informasi</strong></span>
+        <span class="news-meta-chip">Pembaruan: <strong>${latestDate}</strong></span>`;
+    }
+
+    updateBeritaTabUi(counts);
+    renderBeritaSidebar(newsItems, allDokumen, counts);
+
+    // Mode 1: Pembaca Artikel Lengkap (#/berita?id=...)
+    if (beritaState.activeId) {
+      let target = contentIndex[beritaState.activeId];
+      if (!target) {
+        try {
+          target = await Api.get("kontenDetail", { id: beritaState.activeId });
+          if (target) contentIndex[target.ID] = target;
+        } catch (e) { target = null; }
+      }
+      if (filterWrap) filterWrap.style.display = "none";
+      if (!target) {
+        mainEl.innerHTML = `<div class="card">${emptyHtml("Berita atau informasi yang Anda cari tidak ditemukan.")}<div class="text-center"><button type="button" class="btn btn-primary btn-sm" onclick="selectBeritaCategory('semua')">Kembali ke Indeks Berita</button></div></div>`;
+        return;
+      }
+      mainEl.innerHTML = renderBeritaReader(target, newsItems);
+      return;
+    }
+
+    // Mode 2: Ruang Redaksi / Indeks Informasi
+    if (filterWrap) filterWrap.style.display = "";
+
+    let filtered = beritaState.tab === "semua"
+      ? newsItems
+      : newsItems.filter(i => i.Kategori === beritaState.tab);
+
+    if (beritaState.year) {
+      filtered = filtered.filter(i => {
+        const d = new Date(i.Tanggal);
+        return !isNaN(d) && String(d.getFullYear()) === beritaState.year;
+      });
+    }
+    if (beritaState.q) {
+      const qLow = beritaState.q.toLowerCase();
+      filtered = filtered.filter(i =>
+        ((i.Judul || "") + " " + (i.Ringkasan || "") + " " + stripPlainText(i.Isi || "")).toLowerCase().includes(qLow)
+      );
+    }
+
+    if (!filtered.length) {
+      mainEl.innerHTML = `
+        <div class="card text-center" style="padding:48px 24px">
+          <h3 style="margin-bottom:8px">Belum ada informasi yang sesuai</h3>
+          <p class="muted" style="margin-bottom:18px">${beritaState.q || beritaState.year ? "Tidak ditemukan arsip yang cocok dengan kata kunci atau filter tahun tersebut." : "Belum ada terbitan pada kategori ini."}</p>
+          ${(beritaState.q || beritaState.year || beritaState.tab !== "semua") ? `<button type="button" class="btn btn-outline btn-sm" onclick="beritaState.q='';beritaState.year='';selectBeritaCategory('semua')">Tampilkan Semua Informasi</button>` : ""}
+        </div>`;
+      return;
+    }
+
+    const isDefaultFeed = !beritaState.q && !beritaState.year && beritaState.page === 1 && beritaState.tab !== "agenda";
+    const heroItem = isDefaultFeed ? (filtered.find(i => i.GambarURL) || filtered[0]) : null;
+    const listPool = heroItem ? filtered.filter(i => i.ID !== heroItem.ID) : filtered;
+
+    const PER_PAGE = 5;
+    const totalPages = Math.max(1, Math.ceil(listPool.length / PER_PAGE));
+    if (beritaState.page > totalPages) beritaState.page = totalPages;
+    const startIdx = (beritaState.page - 1) * PER_PAGE;
+    const pageItems = listPool.slice(startIdx, startIdx + PER_PAGE);
+
+    const urgentNotice = (beritaState.tab === "semua" && !beritaState.q && !beritaState.year && beritaState.page === 1)
+      ? newsItems.find(i => i.Kategori === "pengumuman" && (!heroItem || i.ID !== heroItem.ID))
+      : null;
+
+    const parts = [];
+
+    if (heroItem) {
+      const heroHref = `#/berita?id=${encodeURIComponent(heroItem.ID)}`;
+      const heroExcerpt = cleanExcerpt(heroItem, 230);
+      const heroMedia = heroItem.GambarURL
+        ? `<img src="${esc(driveImg(heroItem.GambarURL).replace(/sz=w\d+/, "sz=w1200"))}" alt="${esc(heroItem.Judul)}" width="960" height="540" onerror="this.style.display='none'">`
+        : "";
+      parts.push(`
+        <article class="news-hero-card">
+          <a class="news-hero-media" href="${heroHref}">
+            ${heroMedia}
+            <div class="news-hero-badges">
+              <span class="badge-headline">★ Sorotan Utama</span>
+              <span class="badge-cat-overlay">${esc(kategoriLabel(heroItem.Kategori))}</span>
+            </div>
+            <div class="news-hero-meta-overlay">
+              <span>${formatTanggalLengkap(heroItem.Tanggal)} • ${estimateReadMinutes(heroItem)} menit baca</span>
+              <span>Baca Lengkap →</span>
+            </div>
+          </a>
+          <div class="news-hero-body">
+            <h2><a href="${heroHref}">${esc(heroItem.Judul)}</a></h2>
+            ${heroExcerpt ? `<p class="news-hero-excerpt">${esc(heroExcerpt)}</p>` : ""}
+            <div class="news-hero-foot">
+              <div class="news-byline">
+                <div class="byline-avatar">HM</div>
+                <div class="byline-text">
+                  <strong>Biro Humas &amp; Komunikasi Publik</strong>
+                  <span>${esc(SCHOOL.name)} • Publikasi Resmi</span>
+                </div>
+              </div>
+              <a class="btn btn-primary btn-sm" href="${heroHref}">Baca Berita Lengkap</a>
+            </div>
+          </div>
+        </article>`);
+    }
+
+    if (urgentNotice) {
+      const noticeHref = `#/berita?id=${encodeURIComponent(urgentNotice.ID)}`;
+      parts.push(`
+        <aside class="news-notice-strip" aria-label="Sorotan pengumuman resmi">
+          <div class="notice-strip-left">
+            <div class="notice-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <div>
+              <div><span class="notice-kicker">Pengumuman Resmi</span><span class="muted">${formatTanggal(urgentNotice.Tanggal)}</span></div>
+              <h3><a href="${noticeHref}">${esc(urgentNotice.Judul)}</a></h3>
+              <p>${esc(cleanExcerpt(urgentNotice, 150))}</p>
+            </div>
+          </div>
+          <a class="btn btn-accent btn-sm" href="${noticeHref}" style="flex-shrink:0">Lihat Edaran</a>
+        </aside>`);
+    }
+
+    if (pageItems.length) {
+      const headingTitle = beritaState.q
+        ? `Hasil Pencarian: "${beritaState.q}"`
+        : beritaState.tab === "semua"
+          ? "Warta & Terbitan Terkini"
+          : `Daftar ${kategoriLabel(beritaState.tab)}`;
+
+      parts.push(`
+        <div>
+          <div class="news-list-head">
+            <h3>${esc(headingTitle)}</h3>
+            <span class="muted">Menampilkan ${pageItems.length + (heroItem ? 1 : 0)} dari ${filtered.length} terbitan</span>
+          </div>
+          <div class="news-feed-list" style="margin-top:16px">
+            ${pageItems.map(renderNewsFeedCard).join("")}
+          </div>
+        </div>`);
+    }
+
+    if (totalPages > 1) {
+      parts.push(`
+        <nav class="news-pagination" aria-label="Navigasi halaman berita">
+          <button type="button" class="news-page-btn" ${beritaState.page <= 1 ? "disabled" : ""} onclick="goBeritaPage(${beritaState.page - 1})">← Sebelumnya</button>
+          <div class="news-page-nums">
+            ${Array.from({ length: totalPages }, (_, idx) => idx + 1).map(n => `
+              <button type="button" class="news-page-btn ${n === beritaState.page ? "active" : ""}" onclick="goBeritaPage(${n})">${n}</button>`).join("")}
+          </div>
+          <button type="button" class="news-page-btn" ${beritaState.page >= totalPages ? "disabled" : ""} onclick="goBeritaPage(${beritaState.page + 1})">Berikutnya →</button>
+        </nav>`);
+    }
+
+    mainEl.innerHTML = parts.join("");
+  } catch (e) {
+    if (isLatestSeq("berita-page", seq)) {
+      mainEl.innerHTML = `<div class="card text-center" style="padding:40px"><p class="muted">Gagal memuat berita dari server.</p><button type="button" class="btn btn-outline btn-sm" onclick="renderBeritaPage()">Muat Ulang</button></div>`;
+    }
+  }
+}
+
+function goBeritaPage(p) {
+  beritaState.page = p;
+  renderBeritaPage();
+  const topEl = document.getElementById("berita-filter-wrap");
+  if (topEl) topEl.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ---------- GURU & TENAGA KEPENDIDIKAN ----------
@@ -702,6 +1435,12 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("detail-overlay").addEventListener("click", e => {
     if (e.target.id === "detail-overlay") closeDetailModal();
   });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      closeDetailModal();
+      closeVideoModal();
+    }
+  });
 
   // Muat pengaturan dinamis sekolah dari admin
   loadSchoolSettings();
@@ -715,7 +1454,7 @@ function applySchoolSettings(cfg) {
   if (!cfg) return;
   if (cfg.namaSekolah) {
     SCHOOL.name = cfg.namaSekolah;
-    document.title = cfg.namaSekolah + " — Portal Resmi";
+    document.title = cfg.namaSekolah + " | Portal Resmi";
     const brandEl = document.getElementById("navbar-brand-name");
     if (brandEl) brandEl.textContent = cfg.namaSekolah;
     const footerName = document.getElementById("footer-school-name");

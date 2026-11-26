@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="goldRim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F3CF68"/>
+      <stop offset="50%" stop-color="#D49B27"/>
+      <stop offset="100%" stop-color="#9E6E10"/>
+    </linearGradient>
+    <radialGradient id="navyField" cx="50%" cy="38%" r="65%">
+      <stop offset="0%" stop-color="#214985"/>
+      <stop offset="70%" stop-color="#132C54"/>
+      <stop offset="100%" stop-color="#0A1931"/>
+    </radialGradient>
+    <linearGradient id="flameGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FFF3B0"/>
+      <stop offset="45%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Perisai Segilima Khas Sekolah Umum Indonesia (Outer Gold Crest) -->
+  <path d="M256 18 C326 18 438 68 474 134 C498 178 492 310 434 394 C384 466 302 492 256 498 C210 492 128 466 78 394 C20 310 14 178 38 134 C74 68 186 18 256 18 Z" fill="url(#goldRim)"/>
+
+  <!-- Garis Dalam Navy Gelap -->
+  <path d="M256 38 C319 38 421 84 453 144 C475 184 469 304 416 380 C371 446 297 470 256 476 C215 470 141 446 96 380 C43 304 37 184 59 144 C91 84 193 38 256 38 Z" fill="url(#navyField)"/>
+
+  <!-- Lis Emas Tipis Bagian Dalam -->
+  <path d="M256 52 C314 52 408 94 438 150 C458 187 452 298 403 368 C362 429 294 451 256 457 C218 451 150 429 109 368 C60 298 54 187 74 150 C104 94 198 52 256 52 Z" fill="none" stroke="#E5B94C" stroke-width="6" opacity="0.85"/>
+
+  <!-- Bintang Segilima Puncak (Ketuhanan & Budi Pekerti) -->
+  <polygon points="256,70 267,96 295,98 273,116 280,143 256,128 232,143 239,116 217,98 245,96" fill="#FDE073"/>
+
+  <!-- Sayap / Untaian Padi-Kapas Kiri & Kanan (5 Helai Pancasila) -->
+  <g fill="#E5B94C">
+    <!-- Kiri -->
+    <path d="M108 206 C96 236 106 274 134 298 C122 268 124 236 138 212 Z"/>
+    <path d="M114 256 C108 288 124 326 156 346 C140 318 138 286 148 260 Z"/>
+    <path d="M130 306 C132 338 154 372 190 388 C170 362 164 332 168 306 Z"/>
+    <!-- Kanan -->
+    <path d="M404 206 C416 236 406 274 378 298 C390 268 388 236 374 212 Z"/>
+    <path d="M398 256 C404 288 388 326 356 346 C372 318 374 286 364 260 Z"/>
+    <path d="M382 306 C380 338 358 372 322 388 C342 362 348 332 344 306 Z"/>
+  </g>
+
+  <!-- Lidah Api Obor Ilmu -->
+  <path d="M256 146 C284 180 302 208 294 238 C288 260 272 272 256 274 C240 272 224 260 218 238 C210 208 228 180 256 146 Z" fill="url(#flameGrad)"/>
+  <path d="M256 182 C270 202 278 220 273 238 C269 251 262 258 256 260 C250 258 243 251 239 238 C234 220 242 202 256 182 Z" fill="#FFFBEB"/>
+
+  <!-- Cawan & Tangkai Obor -->
+  <rect x="226" y="276" width="60" height="14" rx="7" fill="#F3CF68"/>
+  <path d="M238 290 L274 290 L266 346 L246 346 Z" fill="#D49B27"/>
+
+  <!-- Buku Terbuka (Sumber Ilmu Pengetahuan) -->
+  <path d="M250 328 C222 314 182 314 150 328 L150 404 C182 390 222 390 250 406 Z" fill="#FFFFFF"/>
+  <path d="M262 328 C290 314 330 314 362 328 L362 404 C330 390 290 390 262 406 Z" fill="#FFFFFF"/>
+  <!-- Garis Halaman Buku -->
+  <path d="M240 348 C218 338 188 338 164 348 M240 368 C218 358 188 358 164 368 M240 388 C218 378 188 378 164 388" stroke="#1B3A6B" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.35"/>
+  <path d="M272 348 C294 338 324 338 348 348 M272 368 C294 358 324 358 348 368 M272 388 C294 378 324 378 348 388" stroke="#1B3A6B" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.35"/>
+  <!-- Pita / Penyangga Bawah Emas -->
+  <path d="M186 424 Q256 444 326 424" stroke="#F3CF68" stroke-width="10" stroke-linecap="round" fill="none"/>
+</svg>
