@@ -2,30 +2,41 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<meta name="theme-color" content="#08162B">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex,nofollow">
 <title>Portal Guru & Admin — SMA Negeri Nusantara</title>
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" type="image/x-icon" href="../favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="../img/favicon-32.png">
 <link rel="apple-touch-icon" href="../img/favicon-180.png">
-<link rel="stylesheet" href="../css/style.css?v=202610030405">
+<link rel="stylesheet" href="../css/style.css?v=202611261200">
+<link rel="stylesheet" href="../css/theme.css?v=202611261200">
 </head>
 <body>
 
 <!-- ================= LOGIN ================= -->
-<div id="login-screen" class="login-wrap">
-  <div class="login-card">
-    <p class="eyebrow text-center">Portal Autentikasi Resmi</p>
-    <h1>Masuk ke Sistem Tata Kelola</h1>
-    <p class="muted text-center" style="margin-bottom:24px">Khusus Guru, Tenaga Kependidikan, dan Administrator SMA Negeri Nusantara.</p>
-    <form id="login-form">
-      <div class="field"><label class="required">Email Institusi</label><input type="email" id="login-email" required autocomplete="username"></div>
-      <div class="field"><label class="required">Kata Sandi</label><input type="password" id="login-password" required autocomplete="current-password"></div>
-      <div id="login-msg"></div>
-      <button class="btn btn-primary" type="submit" id="login-btn" style="width:100%">Masuk ke Portal</button>
-    </form>
-    <p class="muted text-center" style="margin-top:16px"><a href="../index.html">← Kembali ke Beranda Publik</a></p>
+<div id="login-screen" class="login-shell">
+  <aside class="login-brand">
+    <img class="lb-logo" src="../img/logo-mark.png" alt="Lambang SMA Negeri Nusantara">
+    <div>
+      <h2>Portal tata kelola sekolah</h2>
+      <p>Kelola konten, galeri, dokumen, dan verifikasi berkas PPDB dalam satu tempat.</p>
+    </div>
+    <span class="lb-foot">SMA Negeri Nusantara</span>
+  </aside>
+  <div class="login-pane">
+    <div class="login-card">
+      <h1>Masuk ke portal</h1>
+      <p class="muted" style="margin-bottom:28px">Khusus guru, tenaga kependidikan, dan administrator.</p>
+      <form id="login-form">
+        <div class="field"><label class="required">Email institusi</label><input type="email" id="login-email" required autocomplete="username"></div>
+        <div class="field"><label class="required">Kata sandi</label><input type="password" id="login-password" required autocomplete="current-password"></div>
+        <div id="login-msg"></div>
+        <button class="btn btn-primary" type="submit" id="login-btn" style="width:100%">Masuk</button>
+      </form>
+      <p class="muted text-center" style="margin-top:20px"><a href="../index.html">Kembali ke beranda publik</a></p>
+    </div>
   </div>
 </div>
 
@@ -238,8 +249,8 @@
   <div class="modal-box" id="modal-box"></div>
 </div>
 
-<script src="../js/config.js?v=202610030405"></script>
-<script src="../js/api.js?v=202610030405"></script>
-<script src="js/portal.js?v=202610030405"></script>
+<script src="../js/config.js?v=202611261200"></script>
+<script src="../js/api.js?v=202611261200"></script>
+<script src="js/portal.js?v=202611261200"></script>
 </body>
 </html>

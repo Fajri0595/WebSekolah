@@ -126,12 +126,12 @@ function newsCardHtml(item) {
   contentIndex[item.ID] = item;
   return `
     <div class="card news-card" style="cursor:pointer" onclick="openContentDetail('${esc(item.ID)}')">
-      <img src="${esc(driveImg(item.GambarURL))}" alt="${esc(item.Judul)}" onerror="this.style.background='var(--surface)'">
+      <div class="news-media"><img src="${esc(driveImg(item.GambarURL))}" alt="${esc(item.Judul)}" loading="lazy" onerror="this.style.visibility='hidden'"></div>
       <span class="pill" style="margin-top:12px">${esc(item.Kategori)}</span>
       <h3 style="margin-top:10px">${esc(item.Judul)}</h3>
       <p class="muted">${formatTanggal(item.Tanggal)}</p>
       <p>${esc((item.Ringkasan || "").slice(0, 120))}...</p>
-      <span style="color:var(--navy);font-weight:600;font-size:13px">Baca selengkapnya →</span>
+      <span class="read-more">Baca selengkapnya</span>
     </div>`;
 }
 
@@ -145,15 +145,32 @@ async function renderHeroSlideshow() {
   if (!box) return;
   try {
     const all = await ensureGaleriAll();
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // 1) Video latar: item Galeri bertipe video, kategori "Beranda", berupa YouTube atau tautan .mp4 langsung
+    const vid = reduce ? null : all
+      .filter(i => i.Tipe === "video" && i.Kategori === "Beranda")
+      .map(i => parseVideoSource(i.URL))
+      .find(v => v.type === "youtube" || v.type === "html5");
+    if (vid) {
+      box.classList.add("has-media");
+      if (vid.type === "youtube") {
+        box.innerHTML = `<iframe class="hero-video" title="" tabindex="-1" aria-hidden="true" allow="autoplay; encrypted-media" src="https://www.youtube-nocookie.com/embed/${vid.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${vid.id}&playsinline=1&rel=0&modestbranding=1&disablekb=1"></iframe>`;
+        const f = box.firstChild; f.addEventListener("load", () => setTimeout(() => f.classList.add("ready"), 900));
+      } else {
+        box.innerHTML = `<video class="hero-video" autoplay muted loop playsinline preload="auto" src="${esc(vid.embedUrl)}"></video>`;
+        const v = box.firstChild; v.addEventListener("playing", () => v.classList.add("ready"));
+      }
+      return;
+    }
+    // 2) Foto latar: kategori "Beranda"; jika belum ada, pakai foto galeri terbaru
     let items = all.filter(i => i.Tipe === "foto" && i.Kategori === "Beranda");
     if (!items.length) items = all.filter(i => i.Tipe === "foto");
     items = items.slice(0, 6);
-    if (!items.length) return; // biarkan gradasi default terlihat
-
+    if (!items.length) return; // tampil latar bawaan (gradasi + lambang sekolah)
+    box.classList.add("has-media");
     box.innerHTML = items.map((it, i) => `
-      <img class="hero-slide ${i === 0 ? "active" : ""}" src="${esc(driveImg(it.URL))}" alt="${esc(it.Caption || "")}">`).join("");
-
-    if (items.length > 1) {
+      <img class="hero-slide ${i === 0 ? "active" : ""}" src="${esc(driveImg(it.URL))}" alt="" ${i ? 'loading="lazy"' : ""}>`).join("");
+    if (items.length > 1 && !reduce) {
       let idx = 0;
       setInterval(() => {
         const slides = box.querySelectorAll(".hero-slide");
@@ -161,9 +178,9 @@ async function renderHeroSlideshow() {
         slides[idx].classList.remove("active");
         idx = (idx + 1) % slides.length;
         slides[idx].classList.add("active");
-      }, 4500);
+      }, 6500);
     }
-  } catch (e) { /* biarkan gradasi default jika gagal dimuat */ }
+  } catch (e) { /* biarkan latar bawaan jika gagal dimuat */ }
 }
 
 // ---------- BERANDA ----------

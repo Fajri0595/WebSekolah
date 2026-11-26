@@ -2,6 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<meta name="theme-color" content="#08162B">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Portal Resmi SMA Negeri Nusantara - Informasi Profil, PPDB Online 2026/2027, Kesiswaan, Berita, Prestasi, dan Layanan Pengaduan.">
   <meta property="og:type" content="website">
@@ -11,80 +12,105 @@
   <meta name="twitter:card" content="summary_large_image">
   <title>SMA Negeri Nusantara — Portal Resmi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" href="img/favicon-180.png">
-<link rel="stylesheet" href="css/style.css?v=202610030405">
+<link rel="stylesheet" href="css/style.css?v=202611261200">
+<link rel="stylesheet" href="css/theme.css?v=202611261200">
 </head>
 <body>
 
-<div class="topbar">
-  <div class="container">
-    <span>📞 <span id="topbar-phone">(021) 7890-1234</span> &nbsp;|&nbsp; ✉ <span id="topbar-email">info@sman-nusantara.sch.id</span></span>
-    <span id="topbar-hours">Senin - Jumat: 07.00 - 16.00 WIB</span>
-  </div>
-</div>
-
-<nav class="navbar">
-  <div class="container">
-    <a class="brand" data-page="beranda"><img src="img/logo-mark.png" alt="Lambang SMA Negeri Nusantara"><span id="navbar-brand-name">SMA Negeri Nusantara</span></a>
-    <ul class="nav-links">
-      <li><a data-page="beranda">Beranda</a></li>
-      <li><a data-page="profil">Profil Sekolah</a></li>
-      <li><a data-page="guru">Guru & Tendik</a></li>
-      <li><a data-page="kesiswaan">Kesiswaan</a></li>
-      <li><a data-page="prestasi">Prestasi</a></li>
-      <li><a data-page="berita">Berita</a></li>
-      <li><a data-page="galeri">Galeri</a></li>
-      <li><a data-page="dokumen">Dokumen</a></li>
-      <li><a data-page="layanan">Layanan</a></li>
-    </ul>
-    <div class="nav-actions">
-      <a class="btn-login-nav" href="portal/index.html">Login</a>
-      <a class="btn-ppdb-nav" data-page="ppdb">PPDB 2026/2027</a>
+<header class="site-header">
+  <div class="topbar">
+    <div class="container">
+      <span>Telp. <span id="topbar-phone">(021) 7890-1234</span><i class="sep"></i><span id="topbar-email">info@sman-nusantara.sch.id</span></span>
+      <span id="topbar-hours">Senin - Jumat: 07.00 - 16.00 WIB</span>
     </div>
-    <button id="hamburger" class="hamburger">☰</button>
   </div>
-</nav>
+  <nav class="site-nav" aria-label="Menu utama">
+    <div class="container">
+      <a class="brand" href="#/beranda" data-page="beranda"><img src="img/logo-mark.png" alt="Lambang SMA Negeri Nusantara"><span id="navbar-brand-name">SMA Negeri Nusantara</span></a>
+      <ul class="nav-links">
+        <li><a href="#/beranda" data-page="beranda">Beranda</a></li>
+        <li><a href="#/profil" data-page="profil">Profil Sekolah</a></li>
+        <li><a href="#/guru" data-page="guru">Guru & Tendik</a></li>
+        <li><a href="#/kesiswaan" data-page="kesiswaan">Kesiswaan</a></li>
+        <li><a href="#/prestasi" data-page="prestasi">Prestasi</a></li>
+        <li><a href="#/berita" data-page="berita">Berita</a></li>
+        <li><a href="#/galeri" data-page="galeri">Galeri</a></li>
+        <li><a href="#/dokumen" data-page="dokumen">Dokumen</a></li>
+        <li><a href="#/layanan" data-page="layanan">Layanan</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a class="btn-login-nav" href="portal/index.html">Login</a>
+        <a class="btn-ppdb-nav" href="#/ppdb" data-page="ppdb">PPDB 2026/2027</a>
+      </div>
+      <button id="hamburger" class="hamburger" type="button" aria-label="Buka menu">&#9776;</button>
+    </div>
+  </nav>
+</header>
 
 <main>
 
   <!-- ================= BERANDA ================= -->
   <section id="page-beranda" class="page active">
     <div class="hero">
-      <div class="container hero-grid">
-        <div>
-          <div class="hero-badge" id="hero-badge"><span class="badge-dot"></span> Terakreditasi A (Unggul) • Portal Resmi</div>
+      <div class="hero-photo" id="hero-photo" aria-hidden="true"></div>
+      <div class="container hero-content">
+        <div class="hero-copy">
+          <div class="hero-badge rise" id="hero-badge" style="--d:.1s"><span class="badge-dot"></span> Terakreditasi A (Unggul) • Portal Resmi</div>
           <h1 id="hero-title">Membentuk Generasi Berkarakter Luhur, Cendekia, dan Berdaya Saing Global</h1>
-          <p id="hero-tagline">SMA Negeri Nusantara berkomitmen memberikan pendidikan menengah atas unggulan berbasis riset, integritas budi pekerti, dan kepemimpinan berwawasan kebangsaan.</p>
-          <div class="hero-actions">
-            <a class="btn btn-accent" data-page="ppdb">Daftar PPDB 2026/2027</a>
-            <a class="btn btn-outline" data-page="profil">Jelajahi Profil Sekolah</a>
+          <p class="rise" id="hero-tagline" style="--d:.9s">SMA Negeri Nusantara berkomitmen memberikan pendidikan menengah atas unggulan berbasis riset, integritas budi pekerti, dan kepemimpinan berwawasan kebangsaan.</p>
+          <div class="hero-actions rise" style="--d:1.05s">
+            <a class="btn btn-accent" href="#/ppdb" data-page="ppdb">Daftar PPDB 2026/2027</a>
+            <a class="btn btn-outline" href="#/profil" data-page="profil">Jelajahi profil sekolah</a>
           </div>
         </div>
-        <div class="hero-photo" id="hero-photo"></div>
+      </div>
+    </div>
+
+    <div class="container quick rise" style="--d:1.25s">
+      <div class="quick-grid">
+        <a href="#/ppdb" data-page="ppdb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg><span><b>Informasi PPDB</b><small>Syarat, jadwal, dan alur pendaftaran</small></span></a>
+        <a href="#/ppdb-status" data-page="ppdb-status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg><span><b>Cek status pendaftaran</b><small>Pantau hasil verifikasi berkas</small></span></a>
+        <a href="#/dokumen" data-page="dokumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg><span><b>Unduh dokumen</b><small>Formulir, kalender, dan panduan</small></span></a>
+        <a href="#/layanan" data-page="layanan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span><b>Pengaduan & konsultasi</b><small>Kirim pesan dan lacak tiket</small></span></a>
       </div>
     </div>
 
     <div class="section">
       <div class="container">
-        <div class="section-header text-center">
-          <hr class="gold-rule" style="margin:0 auto 16px">
-          <h2>Warta & Prestasi Terbaru</h2>
-        </div>
-        <h3 style="margin-bottom:16px">Kabar Sekolah</h3>
+        <div class="sec-head"><h2>Kabar sekolah</h2><a class="link-more" href="#/berita" data-page="berita">Lihat semua berita</a></div>
         <div class="grid grid-3" id="beranda-berita"></div>
-        <h3 style="margin:32px 0 16px">Sorotan Prestasi</h3>
+      </div>
+    </div>
+
+    <div class="section band-dark">
+      <div class="container">
+        <div class="sec-head"><h2>Sorotan prestasi</h2><a class="link-more" href="#/prestasi" data-page="prestasi">Semua prestasi</a></div>
         <div class="grid grid-4" id="beranda-prestasi"></div>
+      </div>
+    </div>
+
+    <div class="cta">
+      <div class="container cta-in">
+        <div>
+          <h2>Penerimaan peserta didik baru 2026/2027</h2>
+          <p>Daftar online, unggah berkas, dan pantau hasil verifikasi dari satu tempat.</p>
+        </div>
+        <div class="cta-actions">
+          <a class="btn btn-primary" href="#/ppdb" data-page="ppdb">Lihat informasi PPDB</a>
+          <a class="btn btn-outline" href="#/ppdb-status" data-page="ppdb-status">Cek status</a>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- ================= PROFIL SEKOLAH ================= -->
   <section id="page-profil" class="page">
+    <header class="page-banner"><div class="container"><h1>Profil Sekolah</h1><p>Sejarah, visi dan misi, struktur organisasi, serta fasilitas sekolah.</p></div></header>
     <div class="container section">
-      <h1>Profil Sekolah</h1>
       <div class="tabs-layout">
         <div class="tab-sidebar" id="profil-tabs">
           <button class="active" data-tab="sejarah">Sejarah</button>
@@ -100,17 +126,16 @@
 
   <!-- ================= GURU & TENAGA KEPENDIDIKAN ================= -->
   <section id="page-guru" class="page">
+    <header class="page-banner"><div class="container"><h1>Guru &amp; Tenaga Kependidikan</h1><p>Direktori pendidik dan tenaga kependidikan SMA Negeri Nusantara.</p></div></header>
     <div class="container section">
-      <h1>Guru & Tenaga Kependidikan</h1>
-      <p class="muted">Direktori pendidik dan tenaga kependidikan SMA Negeri Nusantara.</p>
       <div class="grid grid-4" id="guru-grid" style="margin-top:24px"></div>
     </div>
   </section>
 
   <!-- ================= KESISWAAN ================= -->
   <section id="page-kesiswaan" class="page">
+    <header class="page-banner"><div class="container"><h1>Kesiswaan</h1><p>Kegiatan siswa dan direktori alumni.</p></div></header>
     <div class="container section">
-      <h1>Kesiswaan</h1>
       <div class="tabs-layout">
         <div class="tab-sidebar" id="kesiswaan-tabs">
           <button class="active" data-tab="kegiatan">Kegiatan Siswa</button>
@@ -123,16 +148,16 @@
 
   <!-- ================= PRESTASI ================= -->
   <section id="page-prestasi" class="page">
+    <header class="page-banner"><div class="container"><h1>Prestasi Peserta Didik</h1><p>Capaian akademik dan non-akademik peserta didik.</p></div></header>
     <div class="container section">
-      <h1>Prestasi Peserta Didik</h1>
       <div class="grid grid-3" id="prestasi-grid" style="margin-top:24px"></div>
     </div>
   </section>
 
   <!-- ================= BERITA & INFORMASI ================= -->
   <section id="page-berita" class="page">
+    <header class="page-banner"><div class="container"><h1>Berita &amp; Informasi</h1><p>Berita, pengumuman, agenda, dan artikel terbaru dari sekolah.</p></div></header>
     <div class="container section">
-      <h1>Berita & Informasi</h1>
       <div class="tabs-layout">
         <div class="tab-sidebar" id="berita-tabs">
           <button class="active" data-tab="berita">Berita Sekolah</button>
@@ -147,8 +172,8 @@
 
   <!-- ================= GALERI ================= -->
   <section id="page-galeri" class="page">
+    <header class="page-banner"><div class="container"><h1>Galeri Sekolah</h1><p>Foto dan video kegiatan sekolah.</p></div></header>
     <div class="container section">
-      <h1>Galeri Sekolah</h1>
       <div id="galeri-toggle" style="margin-bottom:20px">
         <button class="btn btn-outline active" data-tipe="foto" onclick="renderGaleri('foto')">Foto</button>
         <button class="btn btn-outline" data-tipe="video" onclick="renderGaleri('video')">Video</button>
@@ -159,9 +184,7 @@
 
   <!-- ================= PPDB : INFORMASI ================= -->
   <section id="page-ppdb" class="page">
-    <div style="background:linear-gradient(135deg,var(--navy),var(--navy-dark));padding:48px 0">
-      <div class="container" id="ppdb-banner"><div class="loading" style="color:#fff">Memuat status PPDB...</div></div>
-    </div>
+    <header class="page-banner page-banner--ppdb"><div class="container" id="ppdb-banner"><div class="loading" style="color:#fff">Memuat status PPDB...</div></div></header>
     <div class="container section">
       <div class="tabs-layout">
         <div class="tab-sidebar" id="ppdb-tabs">
@@ -177,8 +200,8 @@
 
   <!-- ================= PPDB : FORM PENDAFTARAN ================= -->
   <section id="page-ppdb-daftar" class="page">
+    <header class="page-banner"><div class="container"><h1>Formulir Pendaftaran Online</h1><p>Isi data dalam tiga langkah. Siapkan berkas dalam format PDF atau JPG.</p></div></header>
     <div class="container section" id="ppdb-form-page">
-      <h1>Formulir Pendaftaran Online</h1>
       <div class="stepper" id="ppdb-stepper">
         <div class="step active"><div class="step-circle">1</div><span class="label">Data Siswa</span></div>
         <div class="step"><div class="step-circle">2</div><span class="label">Data Orang Tua</span></div>
@@ -258,8 +281,8 @@
 
   <!-- ================= PPDB : CEK STATUS ================= -->
   <section id="page-ppdb-status" class="page">
+    <header class="page-banner"><div class="container"><h1>Cek Status Pendaftaran</h1><p>Masukkan nomor registrasi dan tanggal lahir siswa.</p></div></header>
     <div class="container section" style="max-width:560px">
-      <h1 class="text-center">Cek Status Pendaftaran</h1>
       <form class="card" onsubmit="ppdbCekStatus(event)">
         <div class="field"><label class="required">Nomor Registrasi</label><input required id="cek-no-reg" placeholder="REG-2026-00001"></div>
         <div class="field"><label class="required">Tanggal Lahir Siswa</label><input required id="cek-tgl-lahir" type="date"></div>
@@ -271,8 +294,8 @@
 
   <!-- ================= DOKUMEN ================= -->
   <section id="page-dokumen" class="page">
+    <header class="page-banner"><div class="container"><h1>Pusat Unduh Dokumen</h1><p>Formulir, kalender akademik, panduan, dan dokumen sekolah.</p></div></header>
     <div class="container section">
-      <h1>Pusat Unduh Dokumen</h1>
       <div class="tabs-layout">
         <div class="tab-sidebar" id="dokumen-tabs">
           <button class="active" data-tab="formulir">Download Formulir</button>
@@ -287,8 +310,8 @@
 
   <!-- ================= LAYANAN ================= -->
   <section id="page-layanan" class="page">
+    <header class="page-banner"><div class="container"><h1>Layanan Publik &amp; Pengaduan</h1><p>Sampaikan pengaduan atau konsultasi, lalu pantau status tiketnya.</p></div></header>
     <div class="container section">
-      <h1>Layanan Publik & Pengaduan</h1>
       <div class="grid grid-2" style="align-items:start">
         <div class="card">
           <h3>Kirim Pengaduan / Konsultasi</h3>
@@ -323,9 +346,9 @@
           </div>
           <div class="card" id="layanan-kontak-card">
             <h3>Kontak & Jam Operasional</h3>
-            <p id="layanan-alamat">📍 Jl. Pendidikan Luhur No. 45, Kebayoran Baru, Jakarta Selatan</p>
-            <p>📞 <span id="layanan-phone">(021) 7890-1234</span> &nbsp; | &nbsp; WA: <span id="layanan-wa">+62 811-9230-441</span></p>
-            <p id="layanan-hours">🕒 Senin - Jumat, 08.00 - 15.30 WIB</p>
+            <p id="layanan-alamat">Jl. Pendidikan Luhur No. 45, Kebayoran Baru, Jakarta Selatan</p>
+            <p>Telp. <span id="layanan-phone">(021) 7890-1234</span> &nbsp; | &nbsp; WA: <span id="layanan-wa">+62 811-9230-441</span></p>
+            <p id="layanan-hours">Senin - Jumat, 08.00 - 15.30 WIB</p>
           </div>
         </div>
       </div>
@@ -334,31 +357,34 @@
 
 </main>
 
-<footer>
+<footer class="site-footer">
   <div class="container">
     <div class="footer-grid">
-      <div>
+      <div class="footer-brand">
+        <img src="img/logo-mark.png" alt="" width="52" height="52">
         <h4 id="footer-school-name">SMA Negeri Nusantara</h4>
-        <p id="footer-address" style="font-size:13px">Jl. Pendidikan Luhur No. 45, Kebayoran Baru, Jakarta Selatan 12180</p>
+        <p id="footer-address">Jl. Pendidikan Luhur No. 45, Kebayoran Baru, Jakarta Selatan 12180</p>
       </div>
       <div>
-        <h4>Navigasi Cepat</h4>
-        <p><a data-page="profil">Profil Sekolah</a></p>
-        <p><a data-page="kesiswaan">Kesiswaan</a></p>
-        <p><a data-page="berita">Berita & Pengumuman</a></p>
+        <h4>Jelajahi</h4>
+        <p><a href="#/profil" data-page="profil">Profil sekolah</a></p>
+        <p><a href="#/guru" data-page="guru">Guru & tendik</a></p>
+        <p><a href="#/kesiswaan" data-page="kesiswaan">Kesiswaan</a></p>
+        <p><a href="#/berita" data-page="berita">Berita & pengumuman</a></p>
+        <p><a href="#/galeri" data-page="galeri">Galeri</a></p>
       </div>
       <div>
-        <h4>Layanan Publik</h4>
-        <p><a data-page="dokumen">Unduh Dokumen</a></p>
-        <p><a data-page="layanan">Pengaduan Masyarakat</a></p>
-        <p><a data-page="ppdb">Pendaftaran PPDB</a></p>
-        <p><a href="portal/index.html">Login Guru & Admin</a></p>
+        <h4>Layanan</h4>
+        <p><a href="#/ppdb" data-page="ppdb">Pendaftaran PPDB</a></p>
+        <p><a href="#/dokumen" data-page="dokumen">Unduh dokumen</a></p>
+        <p><a href="#/layanan" data-page="layanan">Pengaduan masyarakat</a></p>
+        <p><a href="portal/index.html">Login guru & admin</a></p>
       </div>
       <div>
         <h4>Kontak</h4>
-        <p>📞 <span id="footer-phone">(021) 7890-1234</span></p>
-        <p>📱 WA: <span id="footer-wa">+62 811-9230-441</span></p>
-        <p>✉ <span id="footer-email">info@sman-nusantara.sch.id</span></p>
+        <p>Telp. <span id="footer-phone">(021) 7890-1234</span></p>
+        <p>WhatsApp <span id="footer-wa">+62 811-9230-441</span></p>
+        <p><span id="footer-email">info@sman-nusantara.sch.id</span></p>
       </div>
     </div>
     <div class="footer-bottom" id="footer-copyright">© 2026 SMA Negeri Nusantara. Hak Cipta Dilindungi Undang-Undang.</div>
@@ -381,8 +407,9 @@
   </div>
 </div>
 
-<script src="js/config.js?v=202610030405"></script>
-<script src="js/api.js?v=202610030405"></script>
-<script src="js/app.js?v=202610030405"></script>
+<script src="js/config.js?v=202611261200"></script>
+<script src="js/api.js?v=202611261200"></script>
+<script src="js/app.js?v=202611261200"></script>
+<script src="js/motion.js?v=202611261200"></script>
 </body>
 </html>
